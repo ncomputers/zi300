@@ -1,0 +1,9 @@
+.yolo-log {
+  font-family: monospace;
+  font-size: 0.75rem;
+  max-height: 6rem;
+  overflow-y: auto;
+  background: #000;
+  color: #0f0;
+  padding: 0.5rem;
+}
