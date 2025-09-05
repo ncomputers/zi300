@@ -47,8 +47,7 @@
     "no_helmet"
   ],
   "redis_url": "redis://localhost:6379/0",
-  "stream_mode": "gstreamer",
-  "use_gstreamer": false,
+  "stream_mode": "ffmpeg",
   "backend_priority": [
     "ffmpeg",
     "opencv"
@@ -56,9 +55,8 @@
   "pipeline_profiles": {
     "low_latency": {
       "label": "Low latency",
-      "backend": "gstreamer",
+      "backend": "ffmpeg",
       "pipelines": {
-        "gstreamer": "rtspsrc location=\"{url}\" protocols=tcp latency=100 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! videoscale ! video/x-raw,format=BGR ! queue max-size-buffers=1 leaky=downstream ! appsink name=appsink drop=true sync=false max-buffers=1",
         "ffmpeg": "ffmpeg -rtsp_transport tcp -i {url} -an -f rawvideo -pix_fmt bgr24 -",
         "opencv": "{url}"
       },
@@ -71,7 +69,6 @@
       "label": "Recording",
       "backend": "ffmpeg",
       "pipelines": {
-        "gstreamer": "rtspsrc location=\"{url}\" protocols=tcp latency=100 ! rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! video/x-raw,format=BGR ! queue max-size-buffers=1 leaky=downstream ! appsink name=appsink drop=true sync=false max-buffers=1",
         "ffmpeg": "ffmpeg -rtsp_transport tcp -i {url} -an -f rawvideo -pix_fmt bgr24 -",
         "opencv": "{url}"
       },
@@ -183,6 +180,5 @@
   },
   "ffmpeg_flags": "-an -flags low_delay -fflags nobuffer",
   "ffmpeg_available": true,
-  "gst_available": true,
   "cuda_available": true
 }

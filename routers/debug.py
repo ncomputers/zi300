@@ -15,7 +15,6 @@ from fastapi.templating import Jinja2Templates
 from loguru import logger
 from starlette.websockets import WebSocketDisconnect
 
-from modules.capture import ensure_gst as _ensure_gst
 from modules.email_utils import sign_token
 from modules.rtsp_probe import CANDIDATES
 from utils.deps import (
@@ -36,7 +35,7 @@ async def debug_stats(
     cfg: dict = Depends(get_settings),
     templates: Jinja2Templates = Depends(get_templates),
 ) -> HTMLResponse:
-    gst_available = _ensure_gst()
+    gst_available = False
     return templates.TemplateResponse(
         "debug_stats.html",
         {"request": request, "cfg": cfg, "gst_available": gst_available},

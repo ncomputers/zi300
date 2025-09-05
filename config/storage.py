@@ -56,9 +56,6 @@ def _read_config_file(path: str) -> dict:
 
 def _apply_defaults(data: dict) -> dict:
     """Populate missing configuration keys and normalize fields."""
-    if "use_gstreamer" not in data and "enable_gstreamer" in data:
-        data["use_gstreamer"] = bool(data.pop("enable_gstreamer"))
-
     for key, value in CONFIG_DEFAULTS.items():
         if isinstance(value, (dict, list)):
             data.setdefault(key, copy.deepcopy(value))
@@ -69,10 +66,7 @@ def _apply_defaults(data: dict) -> dict:
     data.setdefault("stream_mode", "ffmpeg")
     backend_priority = data.get("backend_priority")
     if backend_priority is None:
-        if data.get("stream_mode") == "gstreamer" and data.get("use_gstreamer", False):
-            backend_priority = ["gstreamer", "ffmpeg", "opencv"]
-        else:
-            backend_priority = ["ffmpeg", "gstreamer", "opencv"]
+        backend_priority = ["ffmpeg", "opencv"]
     else:
         if isinstance(backend_priority, str):
             backend_priority = [backend_priority]
@@ -89,28 +83,15 @@ def _rewrite_pipelines(data: dict) -> None:
         if "pipelines" not in cfg:
             extra = cfg.pop("extra_pipeline", None)
             flags = cfg.pop("ffmpeg_flags", None)
-            base_gst = (
-                'rtspsrc location="{url}" protocols=tcp latency=100 ! '
-                "rtph264depay ! h264parse ! avdec_h264 ! videoconvert"
-            )
-            if extra:
-                base_gst += f" ! {extra}"
-            base_gst += (
-                " ! video/x-raw,format=BGR ! queue max-size-buffers=1 "
-                "leaky=downstream ! appsink name=appsink drop=true "
-                "sync=false max-buffers=1"
-            )
             base_ffmpeg = "ffmpeg -rtsp_transport tcp -i {url} -an"
             if flags:
                 base_ffmpeg += f" {flags}"
             base_ffmpeg += " -f rawvideo -pix_fmt bgr24 -"
             cfg["pipelines"] = {
-                "gstreamer": base_gst,
                 "ffmpeg": base_ffmpeg,
                 "opencv": "{url}",
             }
         pipes = cfg.setdefault("pipelines", {})
-        pipes.setdefault("gstreamer", "")
         pipes.setdefault("ffmpeg", "")
         pipes.setdefault("opencv", "{url}")
 

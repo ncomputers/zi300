@@ -36,8 +36,6 @@ DEFAULT_CONFIG = {
     "detector_fps": 10,
     "adaptive_skip": False,
     "modules": DEFAULT_MODULES.copy(),
-    # media backend selection
-    "use_gstreamer": False,
     "storage_backend": "redis",
     "allow_unauthenticated_stream": ALLOW_UNAUTHENTICATED_STREAM,
     "stream_probe_timeout": 10,
@@ -195,8 +193,6 @@ CONFIG_DEFAULTS = {
         {"username": "viewer", "password": "viewer", "role": "viewer"},
     ],
     "settings_password": "000",
-    # media backend selection
-    "use_gstreamer": False,
 }
 
 BRANDING_DEFAULTS = {

@@ -19,6 +19,8 @@ try:  # pragma: no cover - OpenCV is optional
     import cv2  # type: ignore
 except Exception:  # pragma: no cover - dependency may be missing
     cv2 = None  # type: ignore[assignment]
+import threading
+
 import numpy as np
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
@@ -35,16 +37,14 @@ from core.tracker_manager import save_cameras, start_tracker, stop_tracker
 from models.camera import Camera, Orientation, Transport, create_camera
 from models.camera import delete_camera as delete_camera_model
 from models.camera import get_camera, update_camera
-from modules.capture import RtspFfmpegSource, RtspGstSource
+from modules.capture import RtspFfmpegSource
 from modules.email_utils import sign_token
-from modules.getinfo import probe_rtsp
-from modules.rtsp_probe import probe_rtsp_base
-from modules.tracker import tracker
-from modules.preview.mjpeg_publisher import PreviewPublisher
-from modules.stream.rtsp_connector import RtspConnector
 from modules.frame_bus import FrameBus
-
-import threading
+from modules.getinfo import probe_rtsp
+from modules.preview.mjpeg_publisher import PreviewPublisher
+from modules.rtsp_probe import probe_rtsp_base
+from modules.stream.rtsp_connector import RtspConnector
+from modules.tracker import tracker
 
 # Import role helpers directly so tests can monkeypatch ``require_roles`` on
 # this module and affect the admin dependency used below.
@@ -624,10 +624,7 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
             logger.info(f"[add_camera] probing {url} via {tr}")
 
             def _net_capture(tr: str) -> tuple[bool, str, str, str, str]:
-                if cfg.get("stream_mode") == "gstreamer":
-                    cap = RtspGstSource(url, tcp=(tr == "tcp"))
-                else:
-                    cap = RtspFfmpegSource(url, tcp=(tr == "tcp"))
+                cap = RtspFfmpegSource(url, tcp=(tr == "tcp"))
                 try:
                     cap.open()
                     frame = cap.read()
@@ -1320,10 +1317,7 @@ async def test_camera(request: Request):
             def _net_capture(
                 tr: str,
             ) -> tuple[str, bytes | None, str, str, str, str, str]:
-                if cfg.get("stream_mode") == "gstreamer":
-                    cap = RtspGstSource(test_url, tcp=(tr == "tcp"))
-                else:
-                    cap = RtspFfmpegSource(test_url, tcp=(tr == "tcp"))
+                cap = RtspFfmpegSource(test_url, tcp=(tr == "tcp"))
                 try:
                     cap.open()
                     frame = cap.read()
@@ -1626,7 +1620,7 @@ async def update_camera_config(cam_id: int, request: Request):
     profile = (data.get("profile") or "").strip()
     if not url:
         return JSONResponse({"error": "missing_url"}, status_code=400)
-    if backend not in {"ffmpeg", "gstreamer"}:
+    if backend != "ffmpeg":
         return JSONResponse({"error": "invalid_backend"}, status_code=400)
     if len(pipeline) > 200:
         return JSONResponse({"error": "pipeline_too_long"}, status_code=400)

@@ -635,7 +635,7 @@ class PersonTracker:
         self.reverse = reverse
         self.resolution = resolution
         self.rtsp_transport = rtsp_transport
-        self.stream_mode = cfg.get("stream_mode", "gstreamer")
+        self.stream_mode = cfg.get("stream_mode", "ffmpeg")
         self.ppe_conf_thresh = cfg.get("ppe_conf_thresh", 0.5)
         self.detect_helmet_color = cfg.get("detect_helmet_color", False)
         self.track_misc = cfg.get("track_misc", True)
