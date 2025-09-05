@@ -104,6 +104,31 @@ rtsp_connectors: Dict[int, RtspConnector] = {}
 _frame_buses: Dict[int, FrameBus] = {}
 
 
+def _init_preview_stream(cam: dict) -> None:
+    """Initialize preview streaming for ``cam``."""
+    global rtsp_connectors, _frame_buses, preview_publisher
+    try:
+        res = cam.get("resolution") or "640x480"
+        w, h = (int(x) for x in res.lower().split("x"))
+    except Exception:
+        w, h = (640, 480)
+    bus = FrameBus()
+    conn = RtspConnector(cam.get("url", ""), w, h)
+    q = conn.subscribe()
+
+    def _forward(q=q, bus=bus):
+        while True:
+            frame = q.get()
+            bus.put(frame)
+
+    threading.Thread(target=_forward, daemon=True).start()
+    conn.start()
+    cam_id = cam.get("id")
+    _frame_buses[cam_id] = bus
+    rtsp_connectors[cam_id] = conn
+    preview_publisher._buses[cam_id] = bus
+
+
 def _cleanup_tokens() -> None:
     now = time.time()
     for tok, info in list(PREVIEW_TOKENS.items()):
@@ -264,24 +289,7 @@ def init_context(
     _frame_buses = {}
     rtsp_connectors = {}
     for cam in cams:
-        try:
-            res = cam.get("resolution") or "640x480"
-            w, h = (int(x) for x in res.lower().split("x"))
-        except Exception:
-            w, h = (640, 480)
-        bus = FrameBus()
-        conn = RtspConnector(cam.get("url", ""), w, h)
-        q = conn.subscribe()
-
-        def _forward(q=q, bus=bus):
-            while True:
-                frame = q.get()
-                bus.put(frame)
-
-        threading.Thread(target=_forward, daemon=True).start()
-        conn.start()
-        _frame_buses[cam.get("id")] = bus
-        rtsp_connectors[cam.get("id")] = conn
+        _init_preview_stream(cam)
     preview_publisher = PreviewPublisher(_frame_buses)
     # Start background health monitoring task
     try:
@@ -752,6 +760,7 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
                 longitude=longitude,
             ),
         )
+        _init_preview_stream(cam)
     if enabled and cfg.get("enable_person_tracking", True):
         try:
             await manager.start(cam_uuid)
@@ -763,7 +772,7 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
 
 @router.delete("/cameras/{cam_id}")
 async def delete_camera(cam_id: int, request: Request):
-    global cams
+    global cams, rtsp_connectors, _frame_buses
     async with cams_lock:
         if not any(c["id"] == cam_id for c in cams):
             return {"error": "Not found"}
@@ -782,6 +791,14 @@ async def delete_camera(cam_id: int, request: Request):
             f"camera_profile:{cam_id}",
             f"camera:{cam_id}:health",
         )
+
+    conn = rtsp_connectors.pop(cam_id, None)
+    if conn:
+        conn.stop()
+    _frame_buses.pop(cam_id, None)
+    preview_publisher.stop_show(cam_id)
+    preview_publisher._buses.pop(cam_id, None)
+    preview_publisher._clients.pop(cam_id, None)
 
     await asyncio.to_thread(camera_manager.stop_tracker_fn, cam_id, trackers_map)
     return {"deleted": True}
