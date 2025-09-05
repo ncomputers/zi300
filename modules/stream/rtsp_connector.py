@@ -88,6 +88,8 @@ class RtspConnector:
                 self._proc = subprocess.Popen(
                     [
                         "ffmpeg",
+                        "-loglevel",
+                        "error",
                         "-rtsp_transport",
                         "tcp",
                         "-fflags",
@@ -105,7 +107,7 @@ class RtspConnector:
                         "pipe:1",
                     ],
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
                     bufsize=0,
                 )
             except Exception as exc:
@@ -113,17 +115,17 @@ class RtspConnector:
                 self.last_error = str(exc)
                 logx.error("STREAM_ERROR", url=self.url, error=self.last_error)
                 return
-
-            self.last_frame_ts = time.time()
+            self.last_frame_ts = 0.0
             while not self._stop.is_set() and self._proc.poll() is None:
                 if not self._proc.stdout:
                     break
-                timeout = 0.5
+                timeout = 1.0
                 ready, _, _ = select.select([self._proc.stdout], [], [], timeout)
                 now = time.time()
                 interval = 1.0 / self.fps_in if self.fps_in > 0 else self.expected_interval
+                watchdog_sec = max(3 * interval, 2.0)
                 if not ready:
-                    if now - self.last_frame_ts > 3 * interval:
+                    if self.last_frame_ts and now - self.last_frame_ts > watchdog_sec:
                         logx.warn("STREAM_RETRY", url=self.url, reason="watchdog")
                         self.state = self.RETRYING
                         self._proc.kill()
