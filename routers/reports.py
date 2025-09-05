@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from loguru import logger
 from redis.exceptions import RedisError
 
-from core.context import AppContext, get_app_context
+from core.context import AppContext, get_app_context, set_app_state_defaults
 from modules import export
 from modules.utils import require_roles
 from schemas.report import ReportQuery
@@ -31,13 +31,21 @@ def init_context(
     cams,
     redis_facade=None,
 ) -> None:
-    """Initialize module globals.
+    """Initialize defaults used by :func:`core.context.get_app_context`.
 
-    The reports routes now obtain all shared resources from :class:`AppContext`
-    during request handling.  This function is retained for compatibility with
-    the startup sequence, but it intentionally performs no setup work.
+    Tests and lightweight environments may call this helper to supply the
+    objects that would normally be stored on ``app.state`` during application
+    startup.
     """
-    return None
+
+    set_app_state_defaults(
+        config=config,
+        redis=redis_client,
+        trackers=trackers,
+        templates_path=templates_path,
+        cameras=cams,
+        redisfx=redis_facade,
+    )
 
 
 @router.get("/report")
@@ -127,9 +135,9 @@ async def _report_data(query: ReportQuery, ctx: AppContext):
                 last_ts = None
 
         key = "events"
-        if query.label == "person":
+        if query.type == "person":
             key = "person_logs"
-        elif query.label == "vehicle":
+        elif query.type == "vehicle":
             key = "vehicle_logs"
 
         if last_ts is None:
