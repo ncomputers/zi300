@@ -52,7 +52,7 @@ from modules.utils import require_roles
 from routers.detections import _build_payload
 from routers.visitor_utils import visitor_disabled_response
 from schemas.camera import CameraCreate
-from utils import require_feature
+from utils import logx, require_feature
 from utils.api_errors import stream_error_message
 from utils.ffmpeg import build_snapshot_cmd
 from utils.ffmpeg_snapshot import capture_snapshot
@@ -112,18 +112,24 @@ def _init_preview_stream(cam: dict) -> None:
         w, h = (int(x) for x in res.lower().split("x"))
     except Exception:
         w, h = (640, 480)
+    cam_id = cam.get("id")
+    topic = f"frames:{cam_id}:preview"
     bus = FrameBus()
     conn = RtspConnector(cam.get("url", ""), w, h)
     q = conn.subscribe()
+    seq = 0
 
     def _forward(q=q, bus=bus):
+        nonlocal seq
         while True:
             frame = q.get()
             bus.put(frame)
+            seq += 1
+            preview_publisher._seqs[cam_id] = seq
+            logx.event("FRAME_PUSH", camera_id=cam_id, topic=topic, seq=seq)
 
     threading.Thread(target=_forward, daemon=True).start()
     conn.start()
-    cam_id = cam.get("id")
     _frame_buses[cam_id] = bus
     rtsp_connectors[cam_id] = conn
     preview_publisher._buses[cam_id] = bus

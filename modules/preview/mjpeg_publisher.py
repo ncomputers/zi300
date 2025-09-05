@@ -5,8 +5,8 @@ from collections import defaultdict
 from typing import AsyncIterator, Dict
 
 from modules.frame_bus import FrameBus
-from utils.jpeg import encode_jpeg
 from utils import logx
+from utils.jpeg import encode_jpeg
 
 
 class PreviewPublisher:
@@ -16,6 +16,7 @@ class PreviewPublisher:
         self._buses: Dict[int, FrameBus] = buses or {}
         self._showing: set[int] = set()
         self._clients: defaultdict[int, int] = defaultdict(int)
+        self._seqs: defaultdict[int, int] = defaultdict(int)
 
     # ------------------------------------------------------------------
     def start_show(self, camera_id: int) -> None:
@@ -43,12 +44,15 @@ class PreviewPublisher:
         self._clients[camera_id] += 1
         logx.event("PREVIEW_CLIENT_OPEN", camera_id=camera_id)
         boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+        topic = f"frames:{camera_id}:preview"
         try:
             while self.is_showing(camera_id):
                 frame = await asyncio.to_thread(bus.get_latest, 1000)
                 if frame is None:
                     continue
                 jpeg = encode_jpeg(frame)
+                seq = self._seqs.get(camera_id, 0)
+                logx.event("MJPEG_POP", camera_id=camera_id, topic=topic, seq=seq)
                 yield boundary + jpeg + b"\r\n"
         finally:
             self._clients[camera_id] -= 1
