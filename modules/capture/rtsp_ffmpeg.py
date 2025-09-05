@@ -100,6 +100,7 @@ class RtspFfmpegSource(IFrameSource):
         self._udp_fallback = False
         self._restart_failures = 0
         self._error: FrameSourceError | None = None
+        self.cmd: list[str] | None = None
 
     def _probe_resolution(self) -> None:
         """Fill ``self.width`` and ``self.height`` from stream metadata."""
@@ -148,6 +149,8 @@ class RtspFfmpegSource(IFrameSource):
                 "-nostdin",
                 "-rtsp_transport",
                 transport,
+                "-rw_timeout",
+                "15000000",
             ]
             if self.tcp:
                 cmd.extend(["-rtsp_flags", "prefer_tcp"])
@@ -175,7 +178,9 @@ class RtspFfmpegSource(IFrameSource):
                     "rawvideo",
                     "-pix_fmt",
                     "bgr24",
-                    "-",
+                    "-vf",
+                    f"scale={self.width}:{self.height}",
+                    "pipe:1",
                 ]
             )
             flags: list[str] = []
@@ -187,8 +192,10 @@ class RtspFfmpegSource(IFrameSource):
             if flags:
                 insert_pos = cmd.index("-i")
                 cmd[insert_pos:insert_pos] = flags
+            self.cmd = cmd
+            logger.debug("ffmpeg cmd: %s", mask_credentials(" ".join(self.cmd)))
             self.proc = subprocess.Popen(
-                cmd,
+                self.cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 bufsize=10**7,
@@ -196,7 +203,13 @@ class RtspFfmpegSource(IFrameSource):
             self._stderr_buffer.clear()
             self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
             self._stderr_thread.start()
-            log_capture_event(self.cam_id, "opened", backend="ffmpeg", uri=self.uri)
+            log_capture_event(
+                self.cam_id,
+                "opened",
+                backend="ffmpeg",
+                uri=self.uri,
+                cmd=mask_credentials(" ".join(self.cmd)),
+            )
             self._short_reads = 0
 
     def read(self, timeout: float | None = None) -> np.ndarray:
