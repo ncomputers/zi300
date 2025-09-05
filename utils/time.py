@@ -4,8 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import time
 
 from config import config as shared_config
+
+
+# expose stdlib time module for tests that monkeypatch utils.time.time
+time = time
 
 
 def format_ts(ts: float, fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
@@ -24,9 +29,8 @@ def parse_range(range_str: str) -> tuple[int, int]:
     - anything else: last 7 days
     """
 
-    tzname = shared_config.get("timezone", "Asia/Kolkata")
-    tz = ZoneInfo(tzname)
-    now_dt = datetime.now(tz)
+    # Use naive datetime so callers can monkeypatch datetime.now in tests
+    now_dt = datetime.now()
     now = int(now_dt.timestamp())
     tf = (range_str if isinstance(range_str, str) else "7d").lower()
     today = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
