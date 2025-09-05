@@ -7,14 +7,12 @@ import json
 import logging
 from typing import Any
 
-from config import use_gstreamer
 from modules.capture import (
     FrameSourceError,
     HttpMjpegSource,
     IFrameSource,
     LocalCvSource,
     RtspFfmpegSource,
-    RtspGstSource,
 )
 from utils.url import mask_creds, with_rtsp_transport
 
@@ -120,8 +118,6 @@ async def async_open_capture(
         width, height = resolution
     latency = _clamp_latency(kwargs.pop("latency_ms", cam_cfg.get("latency_ms", 100)))
     capture_buffer = kwargs.pop("capture_buffer", None)
-    backend_priority = kwargs.pop("backend_priority", None)
-
     if src_type == "rtsp" and transport is None and isinstance(src, str):
         try:
             probed_url, transport, w_p, h_p, _ = await async_probe_rtsp(src)
@@ -146,60 +142,31 @@ async def async_open_capture(
     if src_type != "rtsp":
         raise StreamUnavailable(f"unknown mode {src_type}")
 
-    if backend_priority is None:
-        if cfg.get("use_gstreamer", use_gstreamer) and RtspGstSource is not None:
-            backend_priority = ["gst", "ffmpeg"]
-        elif RtspGstSource is not None:
-            backend_priority = ["ffmpeg", "gst"]
-        else:
-            backend_priority = ["ffmpeg"]
+    cap_kwargs: dict[str, Any] = {
+        "tcp": transport == "tcp",
+        "latency_ms": latency,
+        "cam_id": cam_id,
+    }
+    if width and height:
+        cap_kwargs["width"] = width
+        cap_kwargs["height"] = height
     while True:
-        last_err = ""
-        for be in backend_priority:
-            if be == "gst":
-                if RtspGstSource is None:
-                    continue
-                cap = RtspGstSource(
-                    str(src),
-                    tcp=transport == "tcp",
-                    latency_ms=latency,
-                    use_nv=use_gpu,
-                    cam_id=cam_id,
-                )
-            elif be == "ffmpeg":
-                cap_kwargs: dict[str, Any] = {
-                    "tcp": transport == "tcp",
-                    "latency_ms": latency,
-                    "cam_id": cam_id,
-                }
-                if width and height:
-                    cap_kwargs["width"] = width
-                    cap_kwargs["height"] = height
-                cap = RtspFfmpegSource(str(src), **cap_kwargs)
-            else:
+        cap = RtspFfmpegSource(str(src), **cap_kwargs)
+        try:
+            await asyncio.to_thread(cap.open)
+            logger.info(
+                "[cap:%s] opened stream using %s transport",
+                cam_id,
+                transport,
+            )
+            return cap, transport
+        except FrameSourceError as exc:
+            if str(exc) == "NO_VIDEO_STREAM" and transport == "tcp":
+                logger.info("[cap:%s] no video over TCP, retrying with UDP", cam_id)
+                transport = "udp"
+                cap_kwargs["tcp"] = False
                 continue
-            try:
-                await asyncio.to_thread(cap.open)
-                logger.info(
-                    "[cap:%s] opened stream using %s transport",
-                    cam_id,
-                    transport,
-                )
-                return cap, transport
-            except FrameSourceError as exc:
-                if str(exc) in {
-                    "NO_VIDEO_STREAM",
-                    "CONNECT_TIMEOUT",
-                    "UNSUPPORTED_CODEC",
-                }:
-                    last_err = str(exc)
-                    continue
-                raise
-        if last_err == "NO_VIDEO_STREAM" and transport == "tcp":
-            logger.info("[cap:%s] no video over TCP, retrying with UDP", cam_id)
-            transport = "udp"
-            continue
-        raise StreamUnavailable(last_err or "failed to open stream")
+            raise StreamUnavailable(str(exc))
 
 
 def open_capture(

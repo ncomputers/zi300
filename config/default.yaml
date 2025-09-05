@@ -7,7 +7,7 @@ prefer_tcp: false
 # Read timeout for the RTSP stream in milliseconds
 read_timeout_ms: 10000
 
-# Video pipeline to use: ffmpeg or gstreamer
+# Video pipeline to use: ffmpeg
 pipeline: ffmpeg
 
 # Display the stream output locally (for debugging)

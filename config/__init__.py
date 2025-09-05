@@ -29,7 +29,6 @@ from .storage import (
 from .versioning import bump_version, watch_config
 
 config = DEFAULT_CONFIG.copy()
-use_gstreamer: bool = config["use_gstreamer"]
 
 
 def set_config(cfg: dict) -> None:
@@ -41,8 +40,6 @@ def set_config(cfg: dict) -> None:
     FACE_THRESHOLDS.blur_detection = config.get(
         "blur_detection_thresh", FACE_THRESHOLDS.blur_detection
     )
-    global use_gstreamer
-    use_gstreamer = config.get("use_gstreamer", False)
 
 
 __all__ = [
@@ -54,7 +51,6 @@ __all__ = [
     "_sanitize_track_ppe",
     "set_config",
     "config",
-    "use_gstreamer",
     "watch_config",
     "bump_version",
     # re-exported constants
