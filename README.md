@@ -52,16 +52,10 @@ Camera capture is configured through a single `camera` block in `config.json`:
 
 Examples:
 
-- **RTSP via FFmpeg** (default)
+- **RTSP via FFmpeg**
 
   ```json
-  {"camera": {"mode": "rtsp", "uri": "rtsp://..."}, "use_gstreamer": false}
-  ```
-
-- **RTSP via GStreamer**
-
-  ```json
-  {"camera": {"mode": "rtsp", "uri": "rtsp://..."}, "use_gstreamer": true}
+  {"camera": {"mode": "rtsp", "uri": "rtsp://..."}}
   ```
 
 - **Local webcam**
@@ -75,11 +69,6 @@ Examples:
   ```json
   {"camera": {"mode": "http", "uri": "http://cam/mjpg"}}
   ```
-
-Toggle `use_gstreamer` to switch RTSP backends. Only one pipeline is active at a
-time; set it to `true` for GStreamer or `false` to use FFmpeg. Hardware decode
-options are available via the GStreamer backend. Set `overlay_mode` to `"none"`
-to stream raw frames without server-side overlays.
 
 - **Counting and alerts**: Tracks entries/exits and can send email alerts based on customizable rules.
 - **Duplicate frame filter**: Skips nearly identical frames to reduce GPU/CPU load.
@@ -95,18 +84,15 @@ to stream raw frames without server-side overlays.
 - **Historical reports**: A background task records per-minute counts to Redis so
   the reports page can graph occupancy over time. Log entries are stored in Redis
   sorted sets for efficient range queries.
-- **Redis stream debug**: Stats are also written to `stats_stream` for reliable debugging.- **GStreamer streaming**: RTSP cameras use `avdec_h264` for software decoding and a leaky queue to drop stale frames for low latency.
+- **Redis stream debug**: Stats are also written to `stats_stream` for reliable debugging.
 
 ## Quick Start
 
 Minimal configuration examples for RTSP cameras:
 
 ```json
-{"camera": {"mode": "rtsp", "uri": "rtsp://user:pass@host/stream"}, "use_gstreamer": false}
+{"camera": {"mode": "rtsp", "uri": "rtsp://user:pass@host/stream"}}
 ```
-
-Set `use_gstreamer` to `true` to run the GStreamer pipeline instead of FFmpeg.
-Only one pipeline runs at a time; restart after changing this flag.
 
 ## Camera Configuration Recommendations
 
@@ -207,14 +193,7 @@ curl -X POST http://localhost:8000/cameras \
    pip install weasyprint
    ```
    The project relies on WeasyPrint—tools like `wkhtmltopdf` are not supported.
-   4. (Optional) Install GStreamer and its Python bindings if you plan to enable
-   GStreamer streaming:
-   ```bash
-   sudo apt install python3-gi gstreamer1.0-plugins-base \
-       gstreamer1.0-plugins-good gstreamer1.0-plugins-bad \
-       gstreamer1.0-plugins-ugly gstreamer1.0-tools
-   ```
-5. (Optional) Install PHP if you want to use the sample PHP pages in `public/`.
+4. (Optional) Install PHP if you want to use the sample PHP pages in `public/`.
 
 ## Configuration
 
@@ -230,26 +209,19 @@ Edit `config.json` to set camera URLs, model paths, thresholds, and email settin
 - `redis_url` – Location of the Redis instance (required). The server must be reachable at startup or the application will terminate.
 - `email` – SMTP configuration. Set `smtp_host`, `smtp_port`, `smtp_user`, `smtp_pass`, `use_tls`/`use_ssl`, and `from_addr` to enable email alerts.
 - `default_host` – Optional host name used when no host is provided. When set,
-- `stream_mode` – Maintained for backward compatibility; FFmpeg is tried first
-  and GStreamer is used only if initialization fails.
+- `stream_mode` – Maintained for backward compatibility; FFmpeg is always used.
 - `stream_probe_timeout` – Seconds to wait for `ffprobe` when resolving stream
   dimensions. Defaults to **10** and can be overridden per camera.
 - `stream_probe_fallback_ttl` – Seconds to cache the fallback resolution after
   a probe failure. Defaults to **120**.
   RTSP probes use TCP transport by default, matching the MJPEG preview
   pipeline.
-- `use_gstreamer` – When `true`, attempt to use GStreamer bindings for camera
-  pipelines. Defaults to `false` and automatically disables itself if
-  `gst-launch-1.0` is missing or fails to run. When `false` the application
-  skips `gi` imports and relies on FFmpeg/OpenCV.
-- `backend_priority` – Ordered list of capture backends to try (default
-  `["ffmpeg", "gstreamer", "opencv"]`). Disabled backends are skipped
-  automatically. `opencv` is only attempted when a live dashboard view is
-  requested (`for_display=True`); otherwise it is removed.
-- `pipeline_profiles` – Named capture settings. See
-  [camera factory examples](docs/modules/modules_camera_factory.md#full-pipeline-profiles)
-  for GStreamer, FFmpeg and OpenCV profiles with equivalent command-line
-  pipelines.
+ - `backend_priority` – Ordered list of capture backends to try (default
+   `["ffmpeg", "opencv"]`). Disabled backends are skipped automatically.
+   `opencv` is only attempted when a live dashboard view is requested
+   (`for_display=True`); otherwise it is removed.
+ - `pipeline_profiles` – Named capture settings. Profiles may specify FFmpeg
+   or OpenCV options with the ``{url}`` placeholder substituted at runtime.
 - `capture_buffer_seconds` – Length of encoded video to buffer before dropping (5–60).
 - `frame_skip` – Number of frames to skip between processed frames (default 3).
 - `detector_fps` – Maximum detector invocations per second (default 10).
@@ -468,7 +440,6 @@ The repository contains the following files:
 - `modules/alerts.py` – background email alert worker.
 - `modules/camera_factory.py` – helpers for opening camera streams.
 - `modules/duplicate_filter.py` – drop nearly identical frames.
-- `modules/gstreamer_stream.py` – GStreamer camera wrapper.
 - `modules/license.py` – license token utilities.
 - `modules/tracker/manager.py` – main tracking and counting logic.
 - `modules/ppe_worker.py` – process person logs for PPE detection.
@@ -521,16 +492,6 @@ adds roughly `N / FPS` of latency but smooths out short processing spikes. Set
 `local_buffer_size=1` for minimal delay; increase it if you experience dropped
 frames during processing spikes.
 
-The factory verifies that a stream is delivering frames and will automatically
-fall back from GStreamer to FFmpeg (or OpenCV) if needed.
-
-Benchmark with:
-
-```bash
-gst-launch-1.0 rtspsrc location=... ! videorate drop-only=true ! fpsdisplaysink text-overlay=false
-ffplay -flags low_delay -fflags nobuffer -i rtsp://...
-python -m modules.latency_probe --url rtsp://... --buffer 3
-```
 
 ## Package Documentation
 
@@ -549,7 +510,6 @@ Detailed documentation for internal modules and routers is available below.
 - [export](docs/modules/modules_export.md)
 - [feedback_db](docs/modules/modules_feedback_db.md)
 - [getinfo](docs/modules/modules_getinfo.md)
-- [gstreamer_stream](docs/modules/modules_gstreamer_stream.md)
 - [license](docs/modules/modules_license.md)
 - [model_registry](docs/modules/modules_model_registry.md)
 - [ppe_worker](docs/modules/modules_ppe_worker.md)

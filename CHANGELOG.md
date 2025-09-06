@@ -50,7 +50,6 @@
   ``counting_enabled`` flag
 - ensure troubleshooter API reports final read step and update tests
 - add FrameBus ring buffer for camera frames
-- fallback to FFmpeg when GStreamer support is unavailable
 - add missing `init_context` stub to troubleshooter router to allow server startup
 - disable audio in FFmpeg pipelines and add low-latency flags for faster RTSP handling
 - cache ffprobe fallback resolutions briefly and allow configurable probe timeout

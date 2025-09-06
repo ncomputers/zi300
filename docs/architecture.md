@@ -12,7 +12,7 @@ The Crowd Management System provides real-time person counting, PPE detection, a
 ```
 Camera Streams --> PersonTracker --> Redis --> Dashboard
 ```
-1. Cameras stream frames via GStreamer or FFmpeg.
+1. Cameras stream frames via FFmpeg.
 2. `PersonTracker` analyzes frames and writes events to Redis streams.
 3. Background workers consume those streams for PPE checks and visitor handling.
 4. The web dashboard subscribes to Redis to display live counts and alerts.

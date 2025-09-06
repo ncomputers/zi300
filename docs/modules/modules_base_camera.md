@@ -12,8 +12,8 @@ stream smooth when inference stalls.
 
 ## Default Backend Order
 When ``BaseCameraStream`` derivatives are selected via
-``open_capture``, the library now attempts FFmpeg first and falls back to
-GStreamer. OpenCV is reserved for on-demand dashboard display only.
+``open_capture``, the library attempts FFmpeg first.
+OpenCV is reserved for on-demand dashboard display only.
 
 ## Key Functions
 None

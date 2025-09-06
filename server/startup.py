@@ -30,7 +30,6 @@ from startup import start_background_workers
 from utils import logx
 from utils.cpu import apply_thread_limits
 from utils.gpu import configure_onnxruntime
-from utils.gstreamer import probe_gstreamer
 from utils.preflight import DependencyError, check_dependencies
 from utils.redis_facade import make_facade_from_url
 
@@ -168,7 +167,6 @@ def init_app(
     cfg["secret_key"] = os.getenv("CSRF_SECRET_KEY", cfg.get("secret_key", ""))
 
     set_log_level(cfg.get("log_level", LOG_LEVEL))
-    probe_gstreamer(cfg)
 
     branding_path = str(Path(config_path_local).with_name("branding.json"))
     cfg["branding"] = load_branding(branding_path)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Check RTSP stream availability across backends.
 
-This script attempts to open the provided RTSP URL using FFmpeg,
-GStreamer and OpenCV backends, printing whether each succeeded or
+This script attempts to open the provided RTSP URL using FFmpeg and
+OpenCV backends, printing whether each succeeded or
 showing the captured stderr output on failure.
 """
 
@@ -72,19 +72,6 @@ def main() -> int:
                 "-f",
                 "null",
                 "-",
-            ],
-        )
-    )
-    ok.append(
-        _run(
-            "GStreamer",
-            [
-                "gst-launch-1.0",
-                "-q",
-                "rtspsrc",
-                f"location={url}",
-                "!",
-                "fakesink",
             ],
         )
     )
