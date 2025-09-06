@@ -246,6 +246,11 @@ Edit `config.json` to set camera URLs, model paths, thresholds, and email settin
 
 - `FFPROBE_TIMEOUT_SEC` – Seconds to wait for RTSP metadata probes. Defaults to **30**.
 - `RTSP_STIMEOUT_USEC` – Microseconds for RTSP connect timeout passed as ``-stimeout``. Defaults to **5000000**.
+- `RTSP_FIRST_FRAME_GRACE_SEC` – Seconds to wait for the first frame before watchdog restarts. Defaults to **10**.
+- `RTSP_MAX_PARTIAL_READS` – Consecutive partial frame reads before reconnect. Defaults to **3**.
+- `FFMPEG_PROBESIZE` – Maximum bytes probed by FFmpeg. Defaults to **1000000**.
+- `FFMPEG_ANALYZEDURATION` – Stream analyze duration in microseconds. Defaults to **0**.
+- `FFMPEG_MAX_DELAY` – Maximum demuxer delay in microseconds. Defaults to **500000**.
 
 ### Entry/exit logging with PPE detection
 

@@ -29,6 +29,7 @@ lock = threading.Lock()
 tracker_threads: Dict[int, dict] = {}
 
 # backoff schedule in seconds
+BACKOFF_BASE = 1
 BACKOFF_SCHEDULE = [1, 2, 5, 15, 60]
 
 
@@ -459,10 +460,12 @@ def watchdog_tick(trackers: Dict[int, PersonTracker]) -> None:
         timer = info.get("timer")
         if timer and timer.is_alive():
             continue
+        if not getattr(tr, "first_frame_ok", False) and time.time() < getattr(tr, "first_frame_grace", 0):
+            continue
         attempt = info.get("restart_attempts", 0) + 1
         consecutive = info.get("consecutive_failures", 0) + 1
         schedule_idx = min(attempt - 1, len(BACKOFF_SCHEDULE) - 1)
-        delay = BACKOFF_SCHEDULE[schedule_idx]
+        delay = BACKOFF_SCHEDULE[schedule_idx] * BACKOFF_BASE
         last_error = getattr(tr, "stream_error", "")
         if consecutive >= 8:
             delay = 300

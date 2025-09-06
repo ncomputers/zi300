@@ -98,6 +98,7 @@ class CaptureWorker:
                     orientation=t.cfg.get("orientation", "vertical"),
                     pass_through=t.stream_mode == "lite",
                 )
+                t.capture_source = cap
                 cmd = getattr(cap, "pipeline", None) or getattr(cap, "cmd", None)
                 if isinstance(cmd, list):
                     cmd = " ".join(cmd)
@@ -116,6 +117,7 @@ class CaptureWorker:
                 )
                 fail_count = 0
                 max_failures = t.cfg.get("max_read_failures", 30)
+                t.first_frame_grace = time.time() + getattr(cap, "first_frame_grace", 0)
                 while t.running:
                     if t.restart_capture:
                         t.restart_capture = False
@@ -246,6 +248,7 @@ class CaptureWorker:
                         t.running = False
                         break
                 _shutdown_capture(cap)
+                t.capture_source = None
                 t.online = False
             except StreamUnavailable as e:
                 status = "timeout" if "timeout" in str(e).lower() else "error"
@@ -290,6 +293,7 @@ class CaptureWorker:
                 t.online = False
                 if cap:
                     _shutdown_capture(cap)
+                    t.capture_source = None
         log_event(
             CAPTURE_STOP,
             camera_id=t.cam_id,

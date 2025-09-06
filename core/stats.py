@@ -56,6 +56,22 @@ def gather_stats(trackers: Dict[int, "PersonTracker"], r: redis.Redis, store: Re
     last_24h = _safe_count(None, None, now - 86400, now)
     if every(300, "reports_last24h") or on_change("reports_last24h", last_24h):
         event("REPORT_ROWS", last24h=last_24h)
+    capture_metrics = {
+        "frames_total": 0,
+        "partial_reads": 0,
+        "restart_count": 0,
+        "first_frame_ms": {},
+    }
+    for cam_id, tr in trackers.items():
+        cap = getattr(tr, "capture_source", None)
+        if not cap:
+            continue
+        capture_metrics["frames_total"] += getattr(cap, "frames_total", 0)
+        capture_metrics["partial_reads"] += getattr(cap, "partial_reads", 0)
+        capture_metrics["restart_count"] += getattr(cap, "restarts", 0)
+        ff = getattr(cap, "first_frame_ms", None)
+        if ff is not None:
+            capture_metrics["first_frame_ms"][cam_id] = ff
     return {
         "in_count": total_in,
         "out_count": total_out,
@@ -64,6 +80,7 @@ def gather_stats(trackers: Dict[int, "PersonTracker"], r: redis.Redis, store: Re
         "status": status,
         "anomaly_counts": anomaly_counts,
         "group_counts": group_counts,
+        "capture": capture_metrics,
     }
 
 
