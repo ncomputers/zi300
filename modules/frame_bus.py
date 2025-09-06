@@ -34,6 +34,7 @@ class FrameBus:
         self._cond = threading.Condition(self._lock)
         self._info = FrameInfo()
         self._last_ts: Optional[float] = None
+        self._seq = 0
 
     # ------------------------------------------------------------------
     def put(self, frame: np.ndarray) -> None:
@@ -51,6 +52,7 @@ class FrameBus:
                 if dt > 0:
                     self._info.fps = 1.0 / dt
             self._last_ts = now
+            self._seq += 1
             self._cond.notify_all()
 
     # ------------------------------------------------------------------
@@ -70,3 +72,9 @@ class FrameBus:
         """Return the latest frame metadata."""
         with self._lock:
             return FrameInfo(self._info.w, self._info.h, self._info.fps)
+
+    @property
+    def seq(self) -> int:
+        """Return the last published sequence number."""
+        with self._lock:
+            return self._seq

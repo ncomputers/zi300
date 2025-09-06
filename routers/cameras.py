@@ -113,7 +113,7 @@ def _init_preview_stream(cam: dict) -> None:
     except Exception:
         w, h = (640, 480)
     bus = FrameBus()
-    conn = RtspConnector(cam.get("url", ""), w, h)
+    conn = RtspConnector(cam.get("url", ""), w, h, camera_id=cam.get("id"))
     q = conn.subscribe()
 
     def _forward(q=q, bus=bus):

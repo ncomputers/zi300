@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 import numpy as np
 
 from utils import logx
+from utils.url import mask_credentials
 
 
 class RtspConnector:
@@ -28,7 +29,14 @@ class RtspConnector:
     ERROR = "error"
     RETRYING = "retrying"
 
-    def __init__(self, url: str, width: int, height: int, fps: float = 30.0) -> None:
+    def __init__(
+        self,
+        url: str,
+        width: int,
+        height: int,
+        fps: float = 30.0,
+        camera_id: str | int | None = None,
+    ) -> None:
         self.url = url
         self.width = width
         self.height = height
@@ -38,6 +46,11 @@ class RtspConnector:
         self.last_error: str = ""
         self.last_frame_ts: float = 0.0
         self.fps_in: float = 0.0
+        self.camera_id = camera_id
+        self.topic = (
+            f"frames:preview:{camera_id}" if camera_id is not None else "frames:preview:unknown"
+        )
+        self._seq = 0
         self._proc: Optional[subprocess.Popen[bytes]] = None
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
@@ -81,31 +94,42 @@ class RtspConnector:
     # ------------------------------------------------------------------
     def _run(self) -> None:
         backoff = 1
+        cmd = [
+            "ffmpeg",
+            "-loglevel",
+            "error",
+            "-rtsp_transport",
+            "tcp",
+            "-rw_timeout",
+            "15000000",
+            "-fflags",
+            "nobuffer",
+            "-flags",
+            "low_delay",
+            "-i",
+            self.url,
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "bgr24",
+            "-vf",
+            f"scale={self.width}:{self.height}",
+            "pipe:1",
+        ]
+        logx.event(
+            "capture_start",
+            camera_id=self.camera_id,
+            mode="stream",
+            url=self.url,
+            backend="RtspFfmpegSource",
+            cmd=mask_credentials(" ".join(cmd)),
+        )
         logx.event("STREAM_START", url=self.url)
         while not self._stop.is_set():
             self.state = self.CONNECTING
             try:
                 self._proc = subprocess.Popen(
-                    [
-                        "ffmpeg",
-                        "-loglevel",
-                        "error",
-                        "-rtsp_transport",
-                        "tcp",
-                        "-fflags",
-                        "nobuffer",
-                        "-flags",
-                        "low_delay",
-                        "-i",
-                        self.url,
-                        "-f",
-                        "rawvideo",
-                        "-pix_fmt",
-                        "bgr24",
-                        "-vf",
-                        f"scale={self.width}:{self.height}",
-                        "pipe:1",
-                    ],
+                    cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     bufsize=0,
@@ -116,6 +140,7 @@ class RtspConnector:
                 logx.error("STREAM_ERROR", url=self.url, error=self.last_error)
                 return
             self.last_frame_ts = 0.0
+            start_time = time.time()
             while not self._stop.is_set() and self._proc.poll() is None:
                 if not self._proc.stdout:
                     break
@@ -125,7 +150,36 @@ class RtspConnector:
                 interval = 1.0 / self.fps_in if self.fps_in > 0 else self.expected_interval
                 watchdog_sec = max(3 * interval, 2.0)
                 if not ready:
-                    if self.last_frame_ts and now - self.last_frame_ts > watchdog_sec:
+                    if not self.last_frame_ts:
+                        if now - start_time > 10:
+                            logx.error(
+                                "capture_error",
+                                camera_id=self.camera_id,
+                                mode="stream",
+                                url=self.url,
+                                code="READ_TIMEOUT",
+                                rc=self._proc.returncode if self._proc else -1,
+                                ffmpeg_tail="",
+                                since_last_frame_ms=int((now - start_time) * 1000),
+                                first_frame=True,
+                            )
+                            logx.warn("STREAM_RETRY", url=self.url, reason="first_frame")
+                            self.state = self.RETRYING
+                            self._proc.kill()
+                            break
+                        continue
+                    if now - self.last_frame_ts > watchdog_sec:
+                        logx.error(
+                            "capture_error",
+                            camera_id=self.camera_id,
+                            mode="stream",
+                            url=self.url,
+                            code="READ_TIMEOUT",
+                            rc=self._proc.returncode if self._proc else -1,
+                            ffmpeg_tail="",
+                            since_last_frame_ms=int((now - self.last_frame_ts) * 1000),
+                            first_frame=False,
+                        )
                         logx.warn("STREAM_RETRY", url=self.url, reason="watchdog")
                         self.state = self.RETRYING
                         self._proc.kill()
@@ -141,6 +195,11 @@ class RtspConnector:
                 frame = np.frombuffer(data, dtype=np.uint8).reshape(self.height, self.width, 3)
                 if self.state != self.CONNECTED:
                     self.state = self.CONNECTED
+                    logx.event(
+                        "FIRST_FRAME",
+                        camera_id=self.camera_id,
+                        latency_ms=int((now - start_time) * 1000),
+                    )
                     logx.event("STREAM_CONNECTED", url=self.url)
                 self._publish(frame)
                 if self.last_frame_ts:
@@ -187,3 +246,10 @@ class RtspConnector:
                     q.put_nowait(frame)
                 except queue.Full:
                     pass
+        self._seq += 1
+        logx.event(
+            "FRAME_PUSH",
+            camera_id=self.camera_id,
+            topic=self.topic,
+            seq=self._seq,
+        )
