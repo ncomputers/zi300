@@ -5,8 +5,8 @@ from collections import defaultdict
 from typing import AsyncIterator, Dict
 
 from modules.frame_bus import FrameBus
-from utils.jpeg import encode_jpeg
 from utils import logx
+from utils.jpeg import encode_jpeg
 
 
 class PreviewPublisher:
@@ -48,6 +48,12 @@ class PreviewPublisher:
                 frame = await asyncio.to_thread(bus.get_latest, 1000)
                 if frame is None:
                     continue
+                logx.event(
+                    "MJPEG_POP",
+                    camera_id=camera_id,
+                    topic=f"frames:preview:{camera_id}",
+                    seq=bus.seq,
+                )
                 jpeg = encode_jpeg(frame)
                 yield boundary + jpeg + b"\r\n"
         finally:
