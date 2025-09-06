@@ -108,23 +108,25 @@ class RtspConnector:
             "low_delay",
             "-i",
             self.url,
-            "-f",
-            "rawvideo",
-            "-pix_fmt",
-            "bgr24",
             "-vf",
             f"scale={self.width}:{self.height}",
+            "-pix_fmt",
+            "bgr24",
+            "-f",
+            "rawvideo",
             "pipe:1",
         ]
+        masked_url = mask_credentials(self.url)
         logx.event(
             "capture_start",
             camera_id=self.camera_id,
             mode="stream",
-            url=self.url,
+            url=masked_url,
             backend="RtspFfmpegSource",
             cmd=mask_credentials(" ".join(cmd)),
         )
-        logx.event("STREAM_START", url=self.url)
+        logx.event("NEGOTIATED_SIZE", w=self.width, h=self.height, frame_size=self.frame_size)
+        logx.event("STREAM_START", url=masked_url)
         while not self._stop.is_set():
             self.state = self.CONNECTING
             try:
@@ -137,7 +139,7 @@ class RtspConnector:
             except Exception as exc:
                 self.state = self.ERROR
                 self.last_error = str(exc)
-                logx.error("STREAM_ERROR", url=self.url, error=self.last_error)
+                logx.error("STREAM_ERROR", url=masked_url, error=self.last_error)
                 return
             self.last_frame_ts = 0.0
             start_time = time.time()
@@ -156,14 +158,14 @@ class RtspConnector:
                                 "capture_error",
                                 camera_id=self.camera_id,
                                 mode="stream",
-                                url=self.url,
+                                url=masked_url,
                                 code="READ_TIMEOUT",
                                 rc=self._proc.returncode if self._proc else -1,
                                 ffmpeg_tail="",
                                 since_last_frame_ms=int((now - start_time) * 1000),
-                                first_frame=True,
+                                phase="first",
                             )
-                            logx.warn("STREAM_RETRY", url=self.url, reason="first_frame")
+                            logx.warn("STREAM_RETRY", url=masked_url, reason="first_frame")
                             self.state = self.RETRYING
                             self._proc.kill()
                             break
@@ -173,26 +175,45 @@ class RtspConnector:
                             "capture_error",
                             camera_id=self.camera_id,
                             mode="stream",
-                            url=self.url,
+                            url=masked_url,
                             code="READ_TIMEOUT",
                             rc=self._proc.returncode if self._proc else -1,
                             ffmpeg_tail="",
                             since_last_frame_ms=int((now - self.last_frame_ts) * 1000),
-                            first_frame=False,
+                            phase="steady",
                         )
-                        logx.warn("STREAM_RETRY", url=self.url, reason="watchdog")
+                        logx.warn("STREAM_RETRY", url=masked_url, reason="watchdog")
                         self.state = self.RETRYING
                         self._proc.kill()
                         break
                     continue
-                data = os.read(self._proc.stdout.fileno(), self.frame_size)
-                if len(data) != self.frame_size:
-                    self.last_error = "short read"
-                    self.state = self.ERROR
-                    logx.error("STREAM_ERROR", url=self.url, error=self.last_error)
-                    self._proc.kill()
+                needed = self.frame_size
+                chunks = bytearray()
+                while needed > 0:
+                    chunk = os.read(self._proc.stdout.fileno(), needed)
+                    if not chunk:
+                        since = int((now - (start_time if self.last_frame_ts == 0 else self.last_frame_ts)) * 1000)
+                        phase = "first" if self.last_frame_ts == 0 else "steady"
+                        logx.error(
+                            "capture_error",
+                            camera_id=self.camera_id,
+                            mode="stream",
+                            url=masked_url,
+                            code="SHORT_READ",
+                            rc=self._proc.returncode if self._proc else -1,
+                            ffmpeg_tail="",
+                            since_last_frame_ms=since,
+                            phase=phase,
+                        )
+                        logx.warn("STREAM_RETRY", url=masked_url, reason="short_read")
+                        self.state = self.RETRYING
+                        self._proc.kill()
+                        break
+                    chunks.extend(chunk)
+                    needed -= len(chunk)
+                if self.state == self.RETRYING:
                     break
-                frame = np.frombuffer(data, dtype=np.uint8).reshape(self.height, self.width, 3)
+                frame = np.frombuffer(chunks, dtype=np.uint8).reshape(self.height, self.width, 3)
                 if self.state != self.CONNECTED:
                     self.state = self.CONNECTED
                     logx.event(
@@ -200,7 +221,7 @@ class RtspConnector:
                         camera_id=self.camera_id,
                         latency_ms=int((now - start_time) * 1000),
                     )
-                    logx.event("STREAM_CONNECTED", url=self.url)
+                    logx.event("STREAM_CONNECTED", url=masked_url)
                 self._publish(frame)
                 if self.last_frame_ts:
                     dt = now - self.last_frame_ts
@@ -213,12 +234,12 @@ class RtspConnector:
             if self._proc and self._proc.poll() is not None and self.state != self.RETRYING:
                 self.state = self.ERROR
                 self.last_error = f"ffmpeg exited: {self._proc.returncode}"
-                logx.error("STREAM_ERROR", url=self.url, error=self.last_error)
+                logx.error("STREAM_ERROR", url=masked_url, error=self.last_error)
             self._cleanup_proc()
             if self._stop.is_set():
                 break
             self.state = self.RETRYING
-            logx.warn("STREAM_RETRY", url=self.url, sleep=backoff)
+            logx.warn("STREAM_RETRY", url=masked_url, sleep=backoff)
             time.sleep(backoff)
             backoff = min(backoff * 2, 10)
         self._cleanup_proc()
