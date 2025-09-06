@@ -35,10 +35,9 @@ async def debug_stats(
     cfg: dict = Depends(get_settings),
     templates: Jinja2Templates = Depends(get_templates),
 ) -> HTMLResponse:
-    gst_available = False
     return templates.TemplateResponse(
         "debug_stats.html",
-        {"request": request, "cfg": cfg, "gst_available": gst_available},
+        {"request": request, "cfg": cfg},
     )
 
 

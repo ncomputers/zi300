@@ -37,7 +37,6 @@ Refer to function signatures above for inputs and outputs.
 - fastapi.templating
 - json
 - modules.ffmpeg_stream
-- modules.gstreamer_stream
 - modules.utils
 - typing
 - utils

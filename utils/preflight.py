@@ -36,16 +36,10 @@ def check_dependencies(cfg: dict, base_dir: str | Path | None = None) -> None:
     base = Path(base_dir) if base_dir else Path(__file__).resolve().parents[1]
 
     ffmpeg_available = which("ffmpeg") is not None
-    gst_available = which("gst-launch-1.0") is not None
     cfg["ffmpeg_available"] = ffmpeg_available
-    cfg["gst_available"] = gst_available
 
-    if not ffmpeg_available and not gst_available:
-        logger.warning("Missing dependencies: ffmpeg, gst-launch-1.0")
     if not ffmpeg_available:
-        logger.warning("'ffmpeg' not found; FFmpeg backend disabled")
-    if not gst_available:
-        logger.warning("'gst-launch-1.0' not found; GStreamer backend disabled")
+        logger.warning("'ffmpeg' not found; video capture disabled")
 
     cuda_available = bool(torch and torch.cuda.is_available())
     cfg["cuda_available"] = cuda_available

@@ -2,8 +2,7 @@
 
 The `/cameras/test` route can start a temporary preview stream from an RTSP
 camera. Sending a POST request with `{"url": "<rtsp-url>", "stream": true}`
-launches an FFmpeg (or GStreamer, depending on configuration) background
-process that converts the feed to an MJPEG stream.
+launches an FFmpeg background process that converts the feed to an MJPEG stream.
 
 By default the stream is returned at its native resolution. Supplying `width`
 and `height` values in the request body scales the preview to the specified

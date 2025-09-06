@@ -61,18 +61,9 @@ def _create_pipeline(cfg: dict[str, Any]) -> PipelineType:
     """Create a capture pipeline based on configuration."""
 
     uri = cfg.get("rtsp_url") or cfg.get("camera", {}).get("uri") or cfg.get("uri") or ""
-    backend = cfg.get("pipeline") or cfg.get("stream_mode")
-    if backend is None:
-        backend = "gstreamer" if cfg.get("use_gstreamer") else "ffmpeg"
+    from modules.capture.pipeline_ffmpeg import FfmpegPipeline
 
-    if backend == "gstreamer":
-        from capture.pipeline_gst import GstPipeline
-
-        return GstPipeline(uri)
-    else:
-        from modules.capture.pipeline_ffmpeg import FfmpegPipeline
-
-        return FfmpegPipeline(url=uri)
+    return FfmpegPipeline(url=uri)
 
 
 def _start_pipeline(p: PipelineType) -> None:
