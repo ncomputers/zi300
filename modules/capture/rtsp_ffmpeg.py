@@ -26,13 +26,15 @@ from app.core.utils import getenv_num
 from utils.logging import log_capture_event
 from utils.logx import log_throttled
 from utils.url import mask_credentials
+import random
 
 from .base import Backoff, FrameSourceError, IFrameSource
 
 logger = logging.getLogger(__name__)
 
 
-MAX_SHORT_READS = 3
+FIRST_FRAME_GRACE_SEC = getenv_num("RTSP_FIRST_FRAME_GRACE_SEC", 10, int)
+MAX_PARTIAL_READS = getenv_num("RTSP_MAX_PARTIAL_READS", 3, int)
 MAX_RESTART_ATTEMPTS = 5
 
 
@@ -101,6 +103,10 @@ class RtspFfmpegSource(IFrameSource):
         self._restart_failures = 0
         self._error: FrameSourceError | None = None
         self.cmd: list[str] | None = None
+        self.frames_total = 0
+        self.partial_reads = 0
+        self.first_frame_ms: int | None = None
+        self.first_frame_grace = FIRST_FRAME_GRACE_SEC
 
     def _probe_resolution(self) -> None:
         """Fill ``self.width`` and ``self.height`` from stream metadata."""
@@ -149,24 +155,27 @@ class RtspFfmpegSource(IFrameSource):
                 "-nostdin",
                 "-rtsp_transport",
                 transport,
-                "-rw_timeout",
-                "15000000",
             ]
             if self.tcp:
                 cmd.extend(["-rtsp_flags", "prefer_tcp"])
             cmd.extend(["-stimeout", str(stimeout)])
+            probesize = getenv_num("FFMPEG_PROBESIZE", 1_000_000, int)
+            analyzeduration = getenv_num("FFMPEG_ANALYZEDURATION", 0, int)
+            max_delay = getenv_num("FFMPEG_MAX_DELAY", 500_000, int)
             cmd.extend(
                 [
                     "-fflags",
                     "nobuffer",
                     "-flags",
                     "low_delay",
+                    "-rtbufsize",
+                    "64M",
                     "-probesize",
-                    "1000000",
+                    str(probesize),
                     "-analyzeduration",
-                    "0",
+                    str(analyzeduration),
                     "-max_delay",
-                    "500000",
+                    str(max_delay),
                     "-reorder_queue_size",
                     "0",
                     "-avioflags",
@@ -249,6 +258,9 @@ class RtspFfmpegSource(IFrameSource):
         expected = (self.width or 0) * (self.height or 0) * 3
         buf = bytearray(expected)
         mv = memoryview(buf)
+        grace_deadline = time.time() + self.first_frame_grace
+        first_frame_seen = False
+        consecutive_partials = 0
         while self._stop_event and not self._stop_event.is_set():
             if not self.proc or not self.proc.stdout:
                 try:
@@ -256,28 +268,44 @@ class RtspFfmpegSource(IFrameSource):
                 except FrameSourceError:
                     break
                 continue
-            try:
-                read = self.proc.stdout.readinto(mv)
-            except (EOFError, BrokenPipeError):
+            filled = 0
+            while filled < expected:
                 try:
-                    self._restart_proc()
-                except FrameSourceError:
+                    n = self.proc.stdout.readinto(mv[filled:])
+                except (EOFError, BrokenPipeError):
+                    n = 0
+                except Exception:
+                    n = 0
+                if not n:
                     break
-                continue
-            except Exception:
-                read = 0
-            if read != expected:
-                self._short_reads += 1
-                if self._short_reads >= MAX_SHORT_READS:
+                filled += n
+                if filled < expected:
+                    logger.debug("partial read %d/%d", filled, expected)
+            if filled != expected:
+                now = time.time()
+                if not first_frame_seen and now < grace_deadline:
+                    continue
+                self.partial_reads += 1
+                consecutive_partials += 1
+                logger.debug("incomplete frame %d/%d", filled, expected)
+                if consecutive_partials >= MAX_PARTIAL_READS:
                     try:
                         self._restart_proc()
                     except FrameSourceError:
                         break
                 continue
+            assert filled == expected
             frame = np.frombuffer(mv, np.uint8).reshape((self.height, self.width, 3)).copy()
-            self._short_reads = 0
+            self.frames_total += 1
+            consecutive_partials = 0
             self._backoff.reset()
             self._restart_failures = 0
+            now = time.time()
+            if not first_frame_seen:
+                latency_ms = int((now - (grace_deadline - self.first_frame_grace)) * 1000)
+                self.first_frame_ms = latency_ms
+                log_capture_event(self.cam_id, "first_frame", backend="ffmpeg", latency_ms=latency_ms)
+                first_frame_seen = True
             if self._frame_queue:
                 if self._frame_queue.full():
                     try:
@@ -288,7 +316,18 @@ class RtspFfmpegSource(IFrameSource):
                     self._frame_queue.put_nowait(frame)
                 except queue.Full:
                     pass
-            self.last_frame_ts = time.time()
+            logger.debug("complete frame %d/%d", filled, expected)
+            self.last_frame_ts = now
+        self._stop_proc()
+        log_capture_event(
+            self.cam_id,
+            "capture_stop",
+            backend="ffmpeg",
+            frames=self.frames_total,
+            partial_reads=self.partial_reads,
+            restarts=self.restarts,
+            last_error=str(self._error) if self._error else "",
+        )
 
     def _restart_proc(self) -> None:
         self._log_stderr()
@@ -326,7 +365,16 @@ class RtspFfmpegSource(IFrameSource):
             key=f"cap:{self.cam_id}:reconnect",
             interval=5,
         )
-        self._backoff.sleep()
+        delay = self._backoff.next()
+        jitter = delay * random.uniform(0.8, 1.2)
+        log_capture_event(
+            self.cam_id,
+            "stream_retry",
+            backend="ffmpeg",
+            reason=stderr,
+            delay_ms=int(jitter * 1000),
+        )
+        time.sleep(jitter)
         if self.tcp and not self._udp_fallback:
             logger.warning("TCP failed; retrying with UDP transport")
             self.tcp = False

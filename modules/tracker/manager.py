@@ -679,6 +679,8 @@ class PersonTracker:
         self.online = False
         self.restart_capture = False
         self.first_frame_ok = False
+        self.first_frame_grace = 0.0
+        self.capture_source = None
 
         self.renderer = None
         self.output_frame = None
