@@ -8,11 +8,6 @@ import logging
 from typing import Any
 
 from modules.capture import FrameSourceError, IFrameSource, RtspFfmpegSource
-
-try:  # pragma: no cover - optional gstreamer source
-    from modules.capture import RtspGstSource  # type: ignore
-except Exception:  # pragma: no cover - gstreamer not available
-    RtspGstSource = None  # type: ignore
 from utils.url import mask_creds, with_rtsp_transport
 
 
@@ -96,10 +91,8 @@ async def async_open_capture(
     cfg: dict[str, Any],
     src: str | int | None = None,
     cam_id: int | None = None,
-    src_type: str | None = None,
     resolution: tuple[int, int] | None = None,
     rtsp_transport: str | None = None,
-    use_gpu: bool = False,
     **kwargs: Any,
 ) -> tuple[IFrameSource, str]:
     """Asynchronously instantiate and open a frame source."""
@@ -108,16 +101,13 @@ async def async_open_capture(
     cam_id = cam_id if cam_id is not None else 0
     if src is None:
         src = cam_cfg.get("uri", "")
-    if src_type is None:
-        src_type = cam_cfg.get("mode", "rtsp")
 
     transport = rtsp_transport
     width, height = (None, None)
     if resolution and len(resolution) == 2:
         width, height = resolution
     latency = _clamp_latency(kwargs.pop("latency_ms", cam_cfg.get("latency_ms", 100)))
-    capture_buffer = kwargs.pop("capture_buffer", None)
-    if src_type == "rtsp" and transport is None and isinstance(src, str):
+    if transport is None and isinstance(src, str):
         try:
             probed_url, transport, w_p, h_p, _ = await async_probe_rtsp(src)
             src = probed_url
@@ -128,9 +118,6 @@ async def async_open_capture(
 
     if transport is None:
         transport = "tcp" if cam_cfg.get("tcp", True) else "udp"
-
-    if src_type != "rtsp":
-        raise StreamUnavailable(f"unknown mode {src_type}")
 
     cap_kwargs: dict[str, Any] = {
         "tcp": transport == "tcp",
@@ -163,10 +150,8 @@ def open_capture(
     cfg: dict[str, Any],
     src: str | int | None = None,
     cam_id: int | None = None,
-    src_type: str | None = None,
     resolution: tuple[int, int] | None = None,
     rtsp_transport: str | None = None,
-    use_gpu: bool = False,
     **kwargs: Any,
 ) -> tuple[IFrameSource, str]:
     """Instantiate and open a frame source synchronously.
@@ -179,10 +164,8 @@ def open_capture(
             cfg,
             src,
             cam_id,
-            src_type,
             resolution,
             rtsp_transport,
-            use_gpu,
             **kwargs,
         )
     )

@@ -27,6 +27,20 @@ def test_add_camera_starts_tracker_async(client, monkeypatch):
         time.sleep(0.1)
         called.set()
 
+    class DummySource:
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self):
+            pass
+
+        def read(self):
+            return object()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(cameras, "RtspFfmpegSource", DummySource)
     monkeypatch.setattr(cameras, "start_tracker", fake_start_tracker)
     monkeypatch.setattr(cameras, "save_cameras", lambda *a, **k: None)
     monkeypatch.setattr(cameras, "cams", [])
@@ -48,6 +62,20 @@ def test_update_camera_restart_starts_tracker_async(client, monkeypatch):
         time.sleep(0.1)
         called.set()
 
+    class DummySource:
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self):
+            pass
+
+        def read(self):
+            return object()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(cameras, "RtspFfmpegSource", DummySource)
     monkeypatch.setattr(cameras, "start_tracker", fake_start_tracker)
     monkeypatch.setattr(cameras, "save_cameras", lambda *a, **k: None)
     monkeypatch.setattr(cameras, "stop_tracker", lambda *a, **k: None)
@@ -69,6 +97,20 @@ def test_add_camera_disabled_does_not_start_tracker(client, monkeypatch):
     def fake_start_tracker(*a, **k):
         called.set()
 
+    class DummySource:
+        def __init__(self, *a, **k):
+            pass
+
+        def open(self):
+            pass
+
+        def read(self):
+            return object()
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(cameras, "RtspFfmpegSource", DummySource)
     monkeypatch.setattr(cameras, "start_tracker", fake_start_tracker)
     monkeypatch.setattr(cameras, "save_cameras", lambda *a, **k: None)
     monkeypatch.setattr(cameras, "cams", [])

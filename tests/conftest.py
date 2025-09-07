@@ -123,9 +123,6 @@ def _stub_probe(monkeypatch, request):
 def client() -> TestClient:
     mp = pytest.MonkeyPatch()
 
-    import main as app
-    from config import config as cfg
-    from utils import preflight
     from utils import redis as redis_utils
 
     mp.setattr(
@@ -133,14 +130,21 @@ def client() -> TestClient:
         "get_sync_client",
         lambda url=None: fakeredis.FakeRedis(decode_responses=True),
     )
-    mp.setattr(
-        app,
-        "get_sync_client",
-        lambda url=None: fakeredis.FakeRedis(decode_responses=True),
-    )
+
+    import main as app
+    from config import config as cfg
+    from utils import preflight
+    if hasattr(app, "get_sync_client"):
+        mp.setattr(
+            app,
+            "get_sync_client",
+            lambda url=None: fakeredis.FakeRedis(decode_responses=True),
+        )
     mp.setattr(app, "probe_gstreamer", lambda cfg: None, raising=False)
 
     import asyncio
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     mp.setattr(asyncio, "create_task", lambda *a, **k: None)
 

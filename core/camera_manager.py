@@ -204,7 +204,7 @@ class CameraManager:
         url = cam.get("url", "") if cam else ""
         try:
             cap, _ = await async_open_capture(
-                self.cfg, url, cam_id, cam.get("type") if cam else None
+                self.cfg, url, cam_id
             )
             try:
                 res = await asyncio.to_thread(cap.read, timeout)

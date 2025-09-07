@@ -28,35 +28,10 @@ def anyio_backend():
     return "asyncio"
 
 
-def test_rtsp_backend_selection(monkeypatch):
+def test_rtsp_backend(monkeypatch):
     monkeypatch.setattr(cf, "RtspFfmpegSource", Dummy)
-    monkeypatch.setattr(cf, "RtspGstSource", Dummy)
-    shared_config["camera"] = {"mode": "rtsp", "uri": "rtsp://x"}
-    shared_config["use_gstreamer"] = False
+    shared_config["camera"] = {"uri": "rtsp://x"}
     cap, _ = cf.open_capture(shared_config, 1, capture_buffer=2)
-    assert isinstance(cap, Dummy) and cap.opened
-    shared_config["use_gstreamer"] = True
-    cap, _ = cf.open_capture(shared_config, 1)
-    assert isinstance(cap, Dummy) and cap.opened
-
-
-def test_http_backend(monkeypatch):
-    monkeypatch.setattr(cf, "HttpMjpegSource", Dummy)
-    shared_config["camera"] = {"mode": "http", "uri": "http://x"}
-    cap, _ = cf.open_capture(shared_config, 1, capture_buffer=3, backend_priority=["http"])
-    assert isinstance(cap, Dummy) and cap.opened
-
-
-def test_gstreamer_fallback_unsup_codec(monkeypatch):
-    class GstFail(Dummy):
-        def open(self) -> None:
-            raise FrameSourceError("UNSUPPORTED_CODEC")
-
-    monkeypatch.setattr(cf, "RtspGstSource", GstFail)
-    monkeypatch.setattr(cf, "RtspFfmpegSource", Dummy)
-    shared_config["camera"] = {"mode": "rtsp", "uri": "rtsp://x"}
-    shared_config["use_gstreamer"] = True
-    cap, _ = cf.open_capture(shared_config, 1)
     assert isinstance(cap, Dummy) and cap.opened
 
 
