@@ -20,6 +20,7 @@ from config.license_storage import get as load_license
 from config.license_storage import set as save_license
 from core.tracker_manager import count_log_loop
 from logging_config import LOG_LEVEL, set_log_level, setup_json_logger
+from mjpeg_server import MjpegRtspServer
 from modules.license import verify_license
 from modules.profiler import profiler_manager
 from modules.rtsp_client import choose_url, ffmpeg_input_args
@@ -254,6 +255,17 @@ async def lifespan(app: FastAPI):
     cams = app.state.cameras
     trackers: dict[int, PersonTracker] = app.state.trackers
 
+    mjpeg_srv = None
+    try:
+        rtsp_url = cfg.get("camera", {}).get("uri", "")
+        port = cfg.get("port", 8080)
+        if rtsp_url:
+            mjpeg_srv = MjpegRtspServer(rtsp_url, port)
+            mjpeg_srv.start()
+            app.state.mjpeg_server = mjpeg_srv
+    except Exception as exc:  # pragma: no cover - optional
+        logger.warning("MJPEG server not started: {}", exc)
+
     base_url = os.getenv("CAM_RTSP_URL")
     if base_url:
         try:
@@ -302,4 +314,7 @@ async def lifespan(app: FastAPI):
             log_task.cancel()
             with suppress(asyncio.CancelledError):
                 await log_task
+        mjpeg_srv = getattr(app.state, "mjpeg_server", None)
+        if mjpeg_srv:
+            mjpeg_srv.stop()
         await stop_all(app)
