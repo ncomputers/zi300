@@ -92,7 +92,6 @@ class CameraManager:
         return {
             "enabled": cam.get("enabled", True),
             "ppe": cam.get("ppe", False),
-            "vms": cam.get("visitor_mgmt", False),
             "counting": any(t in cam.get("tasks", []) for t in ("in_count", "out_count")),
         }
 
@@ -209,7 +208,9 @@ class CameraManager:
         try:
             cap_cfg = CaptureConfig(uri=url)
             cap, _ = await async_open_capture(
-                self.cfg, cap_cfg, cam_id
+                self.cfg,
+                cap_cfg,
+                cam_id,
             )
             try:
                 res = await asyncio.to_thread(cap.read, timeout)
