@@ -91,6 +91,75 @@ class RtspConnector:
             "subscribers": len(self._subs),
         }
 
+    def _launch_proc(self, cmd: list[str]) -> subprocess.Popen[bytes]:
+        """Start FFmpeg and return the process handle."""
+        return subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            bufsize=0,
+        )
+
+    def _read_frame(
+        self, proc: subprocess.Popen[bytes], timeout: float
+    ) -> np.ndarray:
+        """Read a single frame from the FFmpeg process."""
+        if not proc.stdout:
+            raise EOFError("ffmpeg closed stdout")
+        ready, _, _ = select.select([proc.stdout], [], [], timeout)
+        if not ready:
+            raise TimeoutError
+        data = proc.stdout.read(self.frame_size)
+        if not data or len(data) < self.frame_size:
+            raise EOFError("short read from ffmpeg")
+        return np.frombuffer(data, dtype=np.uint8).reshape(
+            self.height, self.width, 3
+        )
+
+    def _handle_watchdog(
+        self, now: float, start_time: float, masked_url: str
+    ) -> bool:
+        """Check watchdog timers and decide if restart is needed."""
+        interval = 1.0 / self.fps_in if self.fps_in > 0 else self.expected_interval
+        watchdog_sec = max(3 * interval, 2.0)
+        if not self.last_frame_ts:
+            if now - start_time > 10:
+                logx.error(
+                    "capture_error",
+                    camera_id=self.camera_id,
+                    mode="stream",
+                    url=masked_url,
+                    code="READ_TIMEOUT",
+                    rc=self._proc.returncode if self._proc else -1,
+                    ffmpeg_tail="",
+                    since_last_frame_ms=int((now - start_time) * 1000),
+                    phase="first",
+                )
+                logx.warn("STREAM_RETRY", url=masked_url, reason="first_frame")
+                self.state = self.RETRYING
+                if self._proc:
+                    self._proc.kill()
+                return True
+            return False
+        if now - self.last_frame_ts > watchdog_sec:
+            logx.error(
+                "capture_error",
+                camera_id=self.camera_id,
+                mode="stream",
+                url=masked_url,
+                code="READ_TIMEOUT",
+                rc=self._proc.returncode if self._proc else -1,
+                ffmpeg_tail="",
+                since_last_frame_ms=int((now - self.last_frame_ts) * 1000),
+                phase="steady",
+            )
+            logx.warn("STREAM_RETRY", url=masked_url, reason="watchdog")
+            self.state = self.RETRYING
+            if self._proc:
+                self._proc.kill()
+            return True
+        return False
+
     # ------------------------------------------------------------------
     def _run(self) -> None:
         backoff = 1
@@ -130,105 +199,69 @@ class RtspConnector:
         while not self._stop.is_set():
             self.state = self.CONNECTING
             try:
-                self._proc = subprocess.Popen(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    bufsize=0,
-                )
-            except Exception as exc:
-                self.state = self.ERROR
-                self.last_error = str(exc)
-                logx.error("STREAM_ERROR", url=masked_url, error=self.last_error)
-                return
-            self.last_frame_ts = 0.0
-            start_time = time.time()
-            while not self._stop.is_set() and self._proc.poll() is None:
-                if not self._proc.stdout:
-                    break
-                timeout = 1.0
-                ready, _, _ = select.select([self._proc.stdout], [], [], timeout)
-                now = time.time()
-                interval = 1.0 / self.fps_in if self.fps_in > 0 else self.expected_interval
-                watchdog_sec = max(3 * interval, 2.0)
-                if not ready:
-                    if not self.last_frame_ts:
-                        if now - start_time > 10:
+                with self._launch_proc(cmd) as proc:
+                    self._proc = proc
+                    self.last_frame_ts = 0.0
+                    start_time = time.time()
+                    while not self._stop.is_set() and proc.poll() is None:
+                        try:
+                            frame = self._read_frame(proc, timeout=1.0)
+                        except TimeoutError:
+                            if self._handle_watchdog(time.time(), start_time, masked_url):
+                                break
+                            continue
+                        except EOFError:
+                            since = int(
+                                (
+                                    time.time()
+                                    - (
+                                        start_time
+                                        if self.last_frame_ts == 0
+                                        else self.last_frame_ts
+                                    )
+                                )
+                                * 1000
+                            )
+                            phase = "first" if self.last_frame_ts == 0 else "steady"
                             logx.error(
                                 "capture_error",
                                 camera_id=self.camera_id,
                                 mode="stream",
                                 url=masked_url,
-                                code="READ_TIMEOUT",
-                                rc=self._proc.returncode if self._proc else -1,
+                                code="SHORT_READ",
+                                rc=proc.returncode if proc else -1,
                                 ffmpeg_tail="",
-                                since_last_frame_ms=int((now - start_time) * 1000),
-                                phase="first",
+                                since_last_frame_ms=since,
+                                phase=phase,
                             )
-                            logx.warn("STREAM_RETRY", url=masked_url, reason="first_frame")
+                            logx.warn("STREAM_RETRY", url=masked_url, reason="short_read")
                             self.state = self.RETRYING
-                            self._proc.kill()
                             break
-                        continue
-                    if now - self.last_frame_ts > watchdog_sec:
-                        logx.error(
-                            "capture_error",
-                            camera_id=self.camera_id,
-                            mode="stream",
-                            url=masked_url,
-                            code="READ_TIMEOUT",
-                            rc=self._proc.returncode if self._proc else -1,
-                            ffmpeg_tail="",
-                            since_last_frame_ms=int((now - self.last_frame_ts) * 1000),
-                            phase="steady",
-                        )
-                        logx.warn("STREAM_RETRY", url=masked_url, reason="watchdog")
-                        self.state = self.RETRYING
-                        self._proc.kill()
-                        break
-                    continue
-                needed = self.frame_size
-                chunks = bytearray()
-                while needed > 0:
-                    chunk = os.read(self._proc.stdout.fileno(), needed)
-                    if not chunk:
-                        since = int((now - (start_time if self.last_frame_ts == 0 else self.last_frame_ts)) * 1000)
-                        phase = "first" if self.last_frame_ts == 0 else "steady"
-                        logx.error(
-                            "capture_error",
-                            camera_id=self.camera_id,
-                            mode="stream",
-                            url=masked_url,
-                            code="SHORT_READ",
-                            rc=self._proc.returncode if self._proc else -1,
-                            ffmpeg_tail="",
-                            since_last_frame_ms=since,
-                            phase=phase,
-                        )
-                        logx.warn("STREAM_RETRY", url=masked_url, reason="short_read")
-                        self.state = self.RETRYING
-                        self._proc.kill()
-                        break
-                    chunks.extend(chunk)
-                    needed -= len(chunk)
-                if self.state == self.RETRYING:
-                    break
-                frame = np.frombuffer(chunks, dtype=np.uint8).reshape(self.height, self.width, 3)
-                if self.state != self.CONNECTED:
-                    self.state = self.CONNECTED
-                    logx.event(
-                        "FIRST_FRAME",
-                        camera_id=self.camera_id,
-                        latency_ms=int((now - start_time) * 1000),
-                    )
-                    logx.event("STREAM_CONNECTED", url=masked_url)
-                self._publish(frame)
-                if self.last_frame_ts:
-                    dt = now - self.last_frame_ts
-                    if dt > 0:
-                        inst = 1.0 / dt
-                        self.fps_in = (self.fps_in * 0.9) + (0.1 * inst) if self.fps_in else inst
-                self.last_frame_ts = now
+                        now = time.time()
+                        if self.state != self.CONNECTED:
+                            self.state = self.CONNECTED
+                            logx.event(
+                                "FIRST_FRAME",
+                                camera_id=self.camera_id,
+                                latency_ms=int((now - start_time) * 1000),
+                            )
+                            logx.event("STREAM_CONNECTED", url=masked_url)
+                        self._publish(frame)
+                        if self.last_frame_ts:
+                            dt = now - self.last_frame_ts
+                            if dt > 0:
+                                inst = 1.0 / dt
+                                self.fps_in = (
+                                    (self.fps_in * 0.9) + (0.1 * inst)
+                                    if self.fps_in
+                                    else inst
+                                )
+                        self.last_frame_ts = now
+            except Exception as exc:
+                self.state = self.ERROR
+                self.last_error = str(exc)
+                logx.error("STREAM_ERROR", url=masked_url, error=self.last_error)
+                return
             if self._stop.is_set():
                 break
             if self._proc and self._proc.poll() is not None and self.state != self.RETRYING:
