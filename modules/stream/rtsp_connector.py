@@ -12,6 +12,7 @@ from typing import Deque, Dict, List, Optional
 import numpy as np
 
 from utils import logx
+from utils.ffmpeg import build_rtsp_base_cmd
 from utils.url import mask_credentials
 
 
@@ -137,9 +138,7 @@ class RtspConnector:
             bufsize=0,
         )
 
-    def _read_frame(
-        self, proc: subprocess.Popen[bytes], timeout: float
-    ) -> np.ndarray:
+    def _read_frame(self, proc: subprocess.Popen[bytes], timeout: float) -> np.ndarray:
         """Read a single frame from the FFmpeg process."""
         if not proc.stdout:
             raise EOFError("ffmpeg closed stdout")
@@ -149,13 +148,9 @@ class RtspConnector:
         data = proc.stdout.read(self.frame_size)
         if not data or len(data) < self.frame_size:
             raise EOFError("short read from ffmpeg")
-        return np.frombuffer(data, dtype=np.uint8).reshape(
-            self.height, self.width, 3
-        )
+        return np.frombuffer(data, dtype=np.uint8).reshape(self.height, self.width, 3)
 
-    def _handle_watchdog(
-        self, now: float, start_time: float, masked_url: str
-    ) -> bool:
+    def _handle_watchdog(self, now: float, start_time: float, masked_url: str) -> bool:
         """Check watchdog timers and decide if restart is needed."""
         interval = 1.0 / self.fps_in if self.fps_in > 0 else self.expected_interval
         watchdog_sec = max(3 * interval, 2.0)
@@ -200,26 +195,12 @@ class RtspConnector:
     # ------------------------------------------------------------------
     def _run(self) -> None:
         backoff = 1
-        cmd = [
-            "ffmpeg",
-            "-loglevel",
-            "error",
-            "-rtsp_transport",
-            "tcp",
-            "-rw_timeout",
-            "15000000",
-            "-fflags",
-            "nobuffer",
-            "-flags",
-            "low_delay",
-            "-i",
-            self.url,
-            "-vf",
-            f"scale={self.width}:{self.height}",
-            "-pix_fmt",
-            "bgr24",
+        cmd = build_rtsp_base_cmd(self.url)
+        cmd += [
             "-f",
             "rawvideo",
+            "-pix_fmt",
+            "bgr24",
             "pipe:1",
         ]
         masked_url = mask_credentials(self.url)
@@ -289,9 +270,7 @@ class RtspConnector:
                             if dt > 0:
                                 inst = 1.0 / dt
                                 self.fps_in = (
-                                    (self.fps_in * 0.9) + (0.1 * inst)
-                                    if self.fps_in
-                                    else inst
+                                    (self.fps_in * 0.9) + (0.1 * inst) if self.fps_in else inst
                                 )
                         self.last_frame_ts = now
             except Exception as exc:
