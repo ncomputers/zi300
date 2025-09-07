@@ -11,7 +11,6 @@ def test_settings_partials_render(client):
         "Detection Settings",
         "Alert Settings",
         "Visitor Management",
-        "Face Recognition",
         "Display Preferences",
         "Branding",
         "License",

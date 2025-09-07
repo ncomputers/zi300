@@ -44,7 +44,6 @@ def test_process_frame(monkeypatch):
 
     tracker = SimpleNamespace(
         _purge_counted=lambda: None,
-        face_tracking_enabled=False,
         tracker=SimpleNamespace(update_tracks=update_tracks),
         line_orientation="horizontal",
         line_ratio=0.5,
@@ -87,7 +86,6 @@ def test_process_frame_filters_invalid(monkeypatch):
 
     tracker = SimpleNamespace(
         _purge_counted=lambda: None,
-        face_tracking_enabled=False,
         tracker=SimpleNamespace(update_tracks=update_tracks),
         line_orientation="horizontal",
         line_ratio=0.5,
@@ -121,7 +119,6 @@ def test_process_frame_reinitializes_renderer_on_shape_change():
     q = queue.Queue()
     tracker = SimpleNamespace(
         _purge_counted=lambda: None,
-        face_tracking_enabled=False,
         tracker=None,
         line_orientation="horizontal",
         line_ratio=0.5,
