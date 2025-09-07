@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import subprocess
+import asyncio
 from typing import Optional
+
+from .rtsp_client import ffprobe_check
 
 CANDIDATES = [
     "/Streaming/Channels/101",
@@ -12,28 +14,11 @@ CANDIDATES = [
 
 
 def _check(url: str) -> bool:
-    cmd = [
-        "ffprobe",
-        "-rtsp_transport",
-        "tcp",
-        "-stimeout",
-        "2000000",
-        "-v",
-        "error",
-        "-show_streams",
-        url,
-    ]
     try:
-        subprocess.run(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=True,
-            timeout=5,
-        )
-        return True
+        code, out, _ = asyncio.run(ffprobe_check(url, 5000))
     except Exception:
         return False
+    return code == 0 and b"codec_type=video" in out
 
 
 def probe_rtsp_base(host: str, user: Optional[str] = None, password: Optional[str] = None) -> str:

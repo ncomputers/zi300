@@ -6,6 +6,39 @@ from urllib.parse import quote, unquote, urlsplit, urlunsplit
 from utils import logx
 
 
+async def ffprobe_check(url: str, timeout_ms: int) -> tuple[int, bytes, bytes]:
+    """Run ffprobe on ``url`` and return ``(returncode, stdout, stderr)``."""
+
+    cmd = [
+        "ffprobe",
+        "-rtsp_transport",
+        "tcp",
+        "-rtsp_flags",
+        "prefer_tcp",
+        "-stimeout",
+        str(timeout_ms * 1000),
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=codec_type",
+        "-of",
+        "default=nw=1",
+        url,
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    try:
+        out, err = await asyncio.wait_for(proc.communicate(), timeout_ms / 1000)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.communicate()
+        return -1, b"", b""
+    return proc.returncode, out, err
+
+
 def percent_encode_auth(url: str) -> str:
     """Return *url* with username/password percent-encoded once."""
 
@@ -29,41 +62,19 @@ def percent_encode_auth(url: str) -> str:
 async def ffprobe_ok(url: str, timeout_ms: int) -> tuple[bool, str]:
     """Return ``(True, "")`` if ``ffprobe`` finds a video stream."""
 
-    cmd = [
-        "ffprobe",
-        "-rtsp_transport",
-        "tcp",
-        "-rtsp_flags",
-        "prefer_tcp",
-        "-v",
-        "error",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=codec_type",
-        "-of",
-        "default=nw=1",
-        url,
-    ]
     try:
-        proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
-        try:
-            out, err = await asyncio.wait_for(proc.communicate(), timeout_ms / 1000)
-        except asyncio.TimeoutError:
-            proc.kill()
-            await proc.communicate()
-            return False, "timeout"
-        if proc.returncode != 0:
-            return False, err.decode().strip()
-        if b"codec_type=video" not in out:
-            return False, "no video stream"
-        return True, ""
+        code, out, err = await ffprobe_check(url, timeout_ms)
     except FileNotFoundError:
         return False, "ffprobe not found"
     except Exception as exc:  # pragma: no cover - unforeseen errors
         return False, str(exc)
+    if code == -1:
+        return False, "timeout"
+    if code != 0:
+        return False, err.decode().strip()
+    if b"codec_type=video" not in out:
+        return False, "no video stream"
+    return True, ""
 
 
 async def choose_url(
