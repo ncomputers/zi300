@@ -23,7 +23,7 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_record)
 
 
-def setup_json_logger(name: str = "vms21", level: str = "INFO") -> logging.Logger:
+def setup_json_logger(name: str = "app", level: str = "INFO") -> logging.Logger:
     """Configure and return a logger with JSON output to stdout."""
     logger = logging.getLogger(name)
     if logger.handlers:  # Already configured
