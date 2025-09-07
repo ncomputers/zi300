@@ -78,7 +78,8 @@ class RtspConnector:
         self.url = url
         self.width = width
         self.height = height
-        self.frame_size = width * height * 3
+        self._probe_resolution()
+        self.frame_size = self.width * self.height * 3
         self.expected_interval = 1.0 / fps if fps > 0 else 0.033
         self.state = self.STOPPED
         self.last_error: str = ""
@@ -129,6 +130,29 @@ class RtspConnector:
             "subscribers": len(self._subs),
         }
 
+    def _probe_resolution(self) -> None:
+        """Probe the stream to determine its actual resolution."""
+        try:
+            out = subprocess.check_output(
+                [
+                    "ffprobe",
+                    "-v",
+                    "error",
+                    "-select_streams",
+                    "v:0",
+                    "-show_entries",
+                    "stream=width,height",
+                    "-of",
+                    "csv=s=x:p=0",
+                    self.url,
+                ],
+                stderr=subprocess.STDOUT,
+            )
+            w_str, h_str = out.decode().strip().split("x")
+            self.width, self.height = int(w_str), int(h_str)
+        except Exception:
+            pass
+
     def _launch_proc(self, cmd: list[str]) -> subprocess.Popen[bytes]:
         """Start FFmpeg and return the process handle."""
         return subprocess.Popen(
@@ -138,16 +162,26 @@ class RtspConnector:
             bufsize=0,
         )
 
-    def _read_frame(self, proc: subprocess.Popen[bytes], timeout: float) -> np.ndarray:
-        """Read a single frame from the FFmpeg process."""
+    def _read_frame(
+        self, proc: subprocess.Popen[bytes], timeout: float
+    ) -> np.ndarray | None:
+        """Read a single frame from the FFmpeg process.
+
+        Returns ``None`` if the frame was incomplete so callers can skip it
+        without restarting the process.
+        """
         if not proc.stdout:
             raise EOFError("ffmpeg closed stdout")
         ready, _, _ = select.select([proc.stdout], [], [], timeout)
         if not ready:
             raise TimeoutError
         data = proc.stdout.read(self.frame_size)
-        if not data or len(data) < self.frame_size:
-            raise EOFError("short read from ffmpeg")
+        if not data:
+            if proc.poll() is not None:
+                raise EOFError("ffmpeg closed stdout")
+            return None
+        if len(data) < self.frame_size:
+            return None
         return np.frombuffer(data, dtype=np.uint8).reshape(self.height, self.width, 3)
 
     def _handle_watchdog(self, now: float, start_time: float, masked_url: str) -> bool:
@@ -224,6 +258,8 @@ class RtspConnector:
                     while not self._stop.is_set() and proc.poll() is None:
                         try:
                             frame = self._read_frame(proc, timeout=1.0)
+                            if frame is None:
+                                continue
                         except TimeoutError:
                             if self._handle_watchdog(time.time(), start_time, masked_url):
                                 break
