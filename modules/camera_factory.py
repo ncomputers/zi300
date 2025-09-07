@@ -5,9 +5,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 from modules.capture import FrameSourceError, IFrameSource, RtspFfmpegSource
+from modules.capture.http_mjpeg import HttpMjpegSource
 
 try:  # pragma: no cover - optional gstreamer source
     from modules.capture import RtspGstSource  # type: ignore
@@ -20,7 +22,23 @@ class StreamUnavailable(Exception):
     """Raised when no capture backend can provide frames."""
 
 
-__all__ = ["open_capture", "async_open_capture", "async_probe_rtsp", "StreamUnavailable"]
+
+
+@dataclass
+class CaptureConfig:
+    uri: str | int | None
+    resolution: tuple[int, int] | None = None
+    latency_ms: int = 100
+    transport: str | None = None
+
+
+__all__ = [
+    "CaptureConfig",
+    "open_capture",
+    "async_open_capture",
+    "async_probe_rtsp",
+    "StreamUnavailable",
+]
 
 
 logger = logging.getLogger(__name__)
@@ -94,11 +112,9 @@ def _clamp_latency(value: int) -> int:
 
 async def async_open_capture(
     cfg: dict[str, Any],
-    src: str | int | None = None,
+    cap_cfg: CaptureConfig,
     cam_id: int | None = None,
     src_type: str | None = None,
-    resolution: tuple[int, int] | None = None,
-    rtsp_transport: str | None = None,
     use_gpu: bool = False,
     **kwargs: Any,
 ) -> tuple[IFrameSource, str]:
@@ -106,16 +122,15 @@ async def async_open_capture(
 
     cam_cfg = cfg.get("camera", {})
     cam_id = cam_id if cam_id is not None else 0
-    if src is None:
-        src = cam_cfg.get("uri", "")
+    src = cap_cfg.uri if cap_cfg.uri is not None else cam_cfg.get("uri", "")
     if src_type is None:
         src_type = cam_cfg.get("mode", "rtsp")
 
-    transport = rtsp_transport
+    transport = cap_cfg.transport
     width, height = (None, None)
-    if resolution and len(resolution) == 2:
-        width, height = resolution
-    latency = _clamp_latency(kwargs.pop("latency_ms", cam_cfg.get("latency_ms", 100)))
+    if cap_cfg.resolution and len(cap_cfg.resolution) == 2:
+        width, height = cap_cfg.resolution
+    latency = _clamp_latency(cap_cfg.latency_ms)
     capture_buffer = kwargs.pop("capture_buffer", None)
     if src_type == "rtsp" and transport is None and isinstance(src, str):
         try:
@@ -128,6 +143,11 @@ async def async_open_capture(
 
     if transport is None:
         transport = "tcp" if cam_cfg.get("tcp", True) else "udp"
+
+    if src_type == "http":
+        cap = HttpMjpegSource(str(src))
+        await asyncio.to_thread(cap.open)
+        return cap, "http"
 
     if src_type != "rtsp":
         raise StreamUnavailable(f"unknown mode {src_type}")
@@ -161,11 +181,9 @@ async def async_open_capture(
 
 def open_capture(
     cfg: dict[str, Any],
-    src: str | int | None = None,
+    cap_cfg: CaptureConfig,
     cam_id: int | None = None,
     src_type: str | None = None,
-    resolution: tuple[int, int] | None = None,
-    rtsp_transport: str | None = None,
     use_gpu: bool = False,
     **kwargs: Any,
 ) -> tuple[IFrameSource, str]:
@@ -177,11 +195,9 @@ def open_capture(
     return asyncio.run(
         async_open_capture(
             cfg,
-            src,
+            cap_cfg,
             cam_id,
             src_type,
-            resolution,
-            rtsp_transport,
             use_gpu,
             **kwargs,
         )

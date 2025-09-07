@@ -33,17 +33,22 @@ def test_rtsp_backend_selection(monkeypatch):
     monkeypatch.setattr(cf, "RtspGstSource", Dummy)
     shared_config["camera"] = {"mode": "rtsp", "uri": "rtsp://x"}
     shared_config["use_gstreamer"] = False
-    cap, _ = cf.open_capture(shared_config, 1, capture_buffer=2)
+    cap_cfg = cf.CaptureConfig(uri="rtsp://x")
+    cap, _ = cf.open_capture(shared_config, cap_cfg, cam_id=1, capture_buffer=2)
     assert isinstance(cap, Dummy) and cap.opened
     shared_config["use_gstreamer"] = True
-    cap, _ = cf.open_capture(shared_config, 1)
+    cap_cfg = cf.CaptureConfig(uri="rtsp://x")
+    cap, _ = cf.open_capture(shared_config, cap_cfg, cam_id=1)
     assert isinstance(cap, Dummy) and cap.opened
 
 
 def test_http_backend(monkeypatch):
     monkeypatch.setattr(cf, "HttpMjpegSource", Dummy)
     shared_config["camera"] = {"mode": "http", "uri": "http://x"}
-    cap, _ = cf.open_capture(shared_config, 1, capture_buffer=3, backend_priority=["http"])
+    cap_cfg = cf.CaptureConfig(uri="http://x")
+    cap, _ = cf.open_capture(
+        shared_config, cap_cfg, cam_id=1, capture_buffer=3, backend_priority=["http"]
+    )
     assert isinstance(cap, Dummy) and cap.opened
 
 
@@ -56,7 +61,8 @@ def test_gstreamer_fallback_unsup_codec(monkeypatch):
     monkeypatch.setattr(cf, "RtspFfmpegSource", Dummy)
     shared_config["camera"] = {"mode": "rtsp", "uri": "rtsp://x"}
     shared_config["use_gstreamer"] = True
-    cap, _ = cf.open_capture(shared_config, 1)
+    cap_cfg = cf.CaptureConfig(uri="rtsp://x")
+    cap, _ = cf.open_capture(shared_config, cap_cfg, cam_id=1)
     assert isinstance(cap, Dummy) and cap.opened
 
 
@@ -83,7 +89,8 @@ def test_udp_retry_on_no_video(monkeypatch):
 
     monkeypatch.setattr(cf, "RtspFfmpegSource", FailingDummy)
     shared_config["camera"] = {"mode": "rtsp", "uri": "rtsp://x", "tcp": True}
-    cap, transport = cf.open_capture(shared_config, 1)
+    cap_cfg = cf.CaptureConfig(uri="rtsp://x", transport=None)
+    cap, transport = cf.open_capture(shared_config, cap_cfg, cam_id=1)
     assert isinstance(cap, FailingDummy) and cap.opened
     assert transport == "udp"
 
@@ -97,5 +104,6 @@ async def test_async_open_capture(monkeypatch):
         return url, "udp", 0, 0, 0.0
 
     monkeypatch.setattr(cf, "async_probe_rtsp", fake_probe)
-    cap, _ = await cf.async_open_capture(shared_config, 1)
+    cap_cfg = cf.CaptureConfig(uri="rtsp://x")
+    cap, _ = await cf.async_open_capture(shared_config, cap_cfg, cam_id=1)
     assert isinstance(cap, Dummy) and cap.opened

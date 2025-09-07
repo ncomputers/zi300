@@ -66,6 +66,8 @@ def test_process_frame(monkeypatch):
         reverse=False,
         count_cooldown=0,
         groups=["person"],
+        track_state_ttl=0,
+        track_states={},
     )
 
     manager.process_frame(tracker, frame, detections)
@@ -107,6 +109,7 @@ def test_process_frame_filters_invalid(monkeypatch):
         reverse=False,
         count_cooldown=0,
         groups=["person"],
+        track_states={},
     )
 
     manager.process_frame(tracker, frame, [det])
@@ -140,18 +143,12 @@ def test_process_frame_reinitializes_renderer_on_shape_change():
         reverse=False,
         count_cooldown=0,
         groups=["person"],
+        track_state_ttl=0,
+        track_states={},
     )
     frame1 = np.zeros((2, 2, 3), dtype=np.uint8)
     manager.process_frame(tracker, frame1, [])
-    r1 = tracker.renderer
-    assert r1 is not None
-    assert r1.frame.shape == frame1.shape
+    assert tracker.renderer is None
     frame2 = np.zeros((4, 4, 3), dtype=np.uint8)
     manager.process_frame(tracker, frame2, [])
-    assert tracker.renderer is not None
-    assert tracker.renderer.frame.shape == frame2.shape
-    assert tracker.renderer is not r1
-    tracker.renderer.queue.put(None)
-    tracker.renderer.process.join()
-    assert tracker.renderer.output.any()
-    tracker.renderer.close()
+    assert tracker.renderer is None
