@@ -1,8 +1,9 @@
 """String constants for Redis keys used across the application."""
 
-CFG_VERSION = "cfg:version"
-CAM_STATE = "cam:{id}:state"
-EVENTS_STREAM = "events"
+CFG_VERSION = "app:cfg:version"
+CAM_STATE = "app:cam:{id}:state"
+EVENTS_STREAM = "app:events"
+
 
 __all__ = [
     "CFG_VERSION",

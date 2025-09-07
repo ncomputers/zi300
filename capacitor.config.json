@@ -1,9 +1,10 @@
 {
-  "appId": "com.rapidcorp.mobile",
-  "appName": "Rapid Mobile",
+  "appId": "com.rapidcorp.app",
+  "appName": "Mobile App",
   "webDir": "public",
   "server": {
-    "url": "https://mobile.rapidcorp.in"
+    "url": "https://app.rapidcorp.in"
+
   },
   "extra": {
     "manifestUrl": "/manifest.json",
