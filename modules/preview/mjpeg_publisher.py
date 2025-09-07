@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections import defaultdict
 from typing import AsyncIterator, Dict
 
@@ -45,7 +44,7 @@ class PreviewPublisher:
         boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
         try:
             while self.is_showing(camera_id):
-                frame = await asyncio.to_thread(bus.get_latest, 1000)
+                frame = await bus.get_latest_async(1000)
                 if frame is None:
                     continue
                 logx.event(
