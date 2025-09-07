@@ -8,6 +8,8 @@ import subprocess
 import threading
 from typing import Iterator, List, Optional
 
+from .backoff import Backoff
+
 logger = logging.getLogger(__name__)
 
 try:  # pragma: no cover - base may live elsewhere
@@ -35,23 +37,6 @@ except Exception:  # pragma: no cover - fallback stub
             raise NotImplementedError
 
 
-class Backoff:
-    """Simple exponential backoff helper."""
-
-    def __init__(self, base: float = 1.0, maximum: float = 10.0) -> None:
-        self.base = base
-        self.maximum = maximum
-        self._n = 0
-
-    def reset(self) -> None:
-        self._n = 0
-
-    def next(self) -> float:
-        delay = min(self.base * (2**self._n), self.maximum)
-        self._n += 1
-        return delay
-
-
 class FfmpegPipeline(PipelineBase):
     """Pipeline providing MJPEG frames via FFmpeg."""
 
@@ -76,7 +61,7 @@ class FfmpegPipeline(PipelineBase):
         self._clients_lock = threading.Lock()
         self._proc_lock = threading.Lock()
         self._stop_event = threading.Event()
-        self._backoff = Backoff()
+        self._backoff = Backoff(base=1.0, maximum=10.0)
 
     # ------------------------------------------------------------------
     def _build_cmd(self, snapshot: bool = False) -> List[str]:

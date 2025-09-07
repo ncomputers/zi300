@@ -14,7 +14,8 @@ from PIL import Image
 from utils.logging import log_capture_event
 from utils.logx import log_throttled
 
-from .base import Backoff, FrameSourceError, IFrameSource
+from .backoff import Backoff
+from .base import FrameSourceError, IFrameSource
 
 logger = logging.getLogger(__name__)
 
