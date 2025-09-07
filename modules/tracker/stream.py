@@ -18,7 +18,7 @@ except ModuleNotFoundError:  # pragma: no cover - torch is optional in tests
 
 from app.core.perf import PERF
 from core.events import CAPTURE_ERROR, CAPTURE_READ_FAIL, CAPTURE_START, CAPTURE_STOP
-from modules.camera_factory import StreamUnavailable, open_capture
+from modules.camera_factory import CaptureConfig, StreamUnavailable, open_capture
 from modules.profiler import register_thread
 from utils.api_errors import stream_error_message
 from utils.logx import error as log_error
@@ -76,13 +76,17 @@ class CaptureWorker:
                 else:
                     use_gpu = getattr(dev, "type", "") == "cuda"
 
+                cap_cfg = CaptureConfig(
+                    uri=t.src,
+                    resolution=t.resolution,
+                    latency_ms=t.cfg.get("latency_ms", 100),
+                    transport=t.rtsp_transport,
+                )
                 cap, t.rtsp_transport = open_capture(
                     t.cfg,
-                    t.src,
+                    cap_cfg,
                     t.cam_id,
                     t.src_type,
-                    t.resolution,
-                    t.rtsp_transport,
                     use_gpu,
                     capture_buffer=t.cfg.get("capture_buffer", 3),
                     backend_priority=t.cfg.get("backend_priority"),
