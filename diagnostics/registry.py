@@ -79,7 +79,7 @@ def get_source_mode(cam_id: int) -> str:
     """Inspect configured cameras and deduce the source mode for ``cam_id``.
 
     Uses ``config.config['cameras']`` if available. The mode is normalised
-    to one of ``rtsp``, ``mjpeg`", "local" or "screen". An empty string is
+    to one of ``rtsp``, ``mjpeg`` or "screen". An empty string is
     returned when the camera cannot be resolved.
     """
 
@@ -89,14 +89,12 @@ def get_source_mode(cam_id: int) -> str:
             mode = (cam.get("mode") or cam.get("type") or "").lower()
             if mode == "http":
                 mode = "mjpeg"
-            if mode not in {"rtsp", "mjpeg", "local", "screen"}:
+            if mode not in {"rtsp", "mjpeg", "screen"}:
                 url = cam.get("url", "")
                 if url.startswith("rtsp://"):
                     mode = "rtsp"
                 elif url.startswith("http://") or url.startswith("https://"):
                     mode = "mjpeg"
-                elif url:
-                    mode = "local"
                 else:
                     mode = "screen"
             return mode

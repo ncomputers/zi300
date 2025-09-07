@@ -58,12 +58,6 @@ Examples:
   {"camera": {"mode": "rtsp", "uri": "rtsp://..."}}
   ```
 
-- **Local webcam**
-
-  ```json
-  {"camera": {"mode": "local", "uri": 0}}
-  ```
-
 - **HTTP MJPEG**
 
   ```json
@@ -178,7 +172,7 @@ curl -X POST http://localhost:8000/cameras \
    features. Headless deployments should install `opencv-python-headless` and
    either set `"headless": true` in `config.json` or run without a `DISPLAY`
    environment variable. If OpenCV is not installed, the application still
-   starts but features that rely on local camera capture remain unavailable.
+   starts but OpenCV-dependent features remain unavailable.
    If you see an `ImportError: libGL.so.1` during startup, remove any existing
    `opencv-python` package and reinstall the headless variant:
 
@@ -355,7 +349,7 @@ Launch the FastAPI application:
 python3 main.py
 ```
 
-Then open `http://localhost:5002` in your browser. Use the **Cameras** page to add streams (HTTP, RTSP or local webcams) and **Settings** to adjust options. Install development dependencies and run tests with `pytest`:
+Then open `http://localhost:5002` in your browser. Use the **Cameras** page to add HTTP or RTSP streams and **Settings** to adjust options. Install development dependencies and run tests with `pytest`:
 
 ```bash
 pip install -r requirements-dev.txt
@@ -493,9 +487,7 @@ The repository contains the following files:
 The camera wrappers keep only the latest **N** frames in memory. A larger buffer
 adds roughly `N / FPS` of latency but smooths out short processing spikes. Set
 `capture_buffer` in `config.json` (default `3`). For 60&nbsp;fps sports feeds try
-`5`, while low frame rate CCTV works well with `2`. Local USB cameras default to
-`local_buffer_size=1` for minimal delay; increase it if you experience dropped
-frames during processing spikes.
+`5`, while low frame rate CCTV works well with `2`.
 
 
 ## Package Documentation

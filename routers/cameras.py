@@ -388,10 +388,10 @@ async def create_camera_api(camera: dict):
             logger.error(f"[create_camera_api] auto-probe failed for {sanitized}: {e}")
             return JSONResponse({"error": "RTSP auto-probe failed"}, status_code=400)
     cam_dict["resolution"] = await _resolve_resolution(url, cam_dict.get("resolution"))
-    if url.isdigit() or url.startswith("/dev/"):
-        cam_dict["type"] = "local"
-    else:
+    try:
         cam_dict["type"] = get_stream_type(url)
+    except ValueError:
+        return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
     async with cams_lock:
         cam_id = max([c["id"] for c in cams], default=0) + 1
         cam_dict["id"] = cam_id
@@ -567,7 +567,6 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
     data = await request.json()
     lic = cfg.get("license_info", {})
     url = data.get("url")
-    src_type = data.get("type", "http")
     ppe = bool(data.get("ppe"))
     visitor = bool(data.get("visitor_mgmt"))
     features = lic.get("features", {})
@@ -597,12 +596,10 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
     resolution = await _resolve_resolution(url, data.get("resolution"))
     if not url:
         return JSONResponse({"error": "Missing URL"}, status_code=400)
-    if url.isdigit() or url.startswith("/dev/"):
-        src_type = "local"
-    elif url.startswith("rtsp://"):
-        src_type = "rtsp"
-    if src_type == "local" and not (url.isdigit() or url.startswith("/dev/")):
-        return JSONResponse({"error": "invalid_local_camera"}, status_code=400)
+    try:
+        src_type = get_stream_type(url)
+    except ValueError:
+        return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
     ready_timeout = data.get("ready_timeout")
     ready_frames = data.get("ready_frames")
     ready_duration = data.get("ready_duration")
@@ -610,19 +607,6 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
     logger.info(f"[add_camera] probing {url}")
 
     async def _probe_url() -> tuple[bool, str, str, str]:
-        if url.isdigit() or url.startswith("/dev/"):
-
-            def _local_capture() -> tuple[bool, str, str, str]:
-                cap = cv2.VideoCapture(int(url) if url.isdigit() else url)
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
-                cap.set(cv2.CAP_PROP_FPS, 1)
-                ret, frame = cap.read()
-                cap.release()
-                return ret and frame is not None, "error", "unable to read", ""
-
-            return await asyncio.to_thread(_local_capture)
-
         transport = TEST_CAMERA_TRANSPORT.get(url)
         transports = [transport] if transport else ["tcp", "udp"]
         last_status = ""
@@ -884,21 +868,14 @@ async def update_camera(
         for cam in cams:
             if cam["id"] == cam_id:
                 url_check = data.get("url", cam.get("url", ""))
-                type_check = data.get("type")
-                if type_check is None:
-                    if "url" in data:
-                        if data["url"].isdigit() or data["url"].startswith("/dev/"):
-                            type_check = "local"
-                        elif data["url"].startswith("rtsp://"):
-                            type_check = "rtsp"
-                        else:
-                            type_check = "http"
-                    else:
-                        type_check = cam.get("type", "http")
-                if type_check == "local" and not (
-                    url_check.isdigit() or url_check.startswith("/dev/")
-                ):
-                    return JSONResponse({"error": "invalid_local_camera"}, status_code=400)
+                try:
+                    type_check = (
+                        get_stream_type(data["url"])
+                        if "url" in data
+                        else data.get("type", cam.get("type", "http"))
+                    )
+                except ValueError:
+                    return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
                 ppe = data.get("ppe") if "ppe" in data else cam.get("ppe", False)
                 visitor = (
                     data.get("visitor_mgmt")
@@ -962,13 +939,10 @@ async def update_camera(
                 if "url" in data:
                     cam["url"] = data["url"]
                     restart_needed = True
-                    if "type" not in data:
-                        if cam["url"].isdigit() or cam["url"].startswith("/dev/"):
-                            cam["type"] = "local"
-                        elif cam["url"].startswith("rtsp://"):
-                            cam["type"] = "rtsp"
-                        else:
-                            cam["type"] = "http"
+                    try:
+                        cam["type"] = get_stream_type(cam["url"])
+                    except ValueError:
+                        return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
                 if "type" in data:
                     cam["type"] = data["type"]
                     restart_needed = True
@@ -1300,25 +1274,6 @@ async def test_camera(request: Request):
     ]:
         """Execute the actual probe in a background task."""
 
-        if url.isdigit() or url.startswith("/dev/"):
-
-            def _local_capture() -> bytes | None:
-                cap = cv2.VideoCapture(int(url) if url.isdigit() else url)
-                if width and height:
-                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
-                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
-                cap.set(cv2.CAP_PROP_FPS, 1)
-                ret, frame = cap.read()
-                cap.release()
-                if not ret or frame is None:
-                    return None
-                return encode_jpeg(frame)
-
-            buf = await asyncio.to_thread(_local_capture)
-            if buf is None:
-                return None, None, "local", "unable to read", "", "", None, None
-            return None, buf, "ok", "", "", "", None, None
-
         transport_pref = transport or TEST_CAMERA_TRANSPORT.get(url)
         transports = [transport_pref] if transport_pref else ["tcp", "udp"]
 
@@ -1503,7 +1458,7 @@ async def camera_capabilities(request: Request):
         return JSONResponse({"error": "missing url"}, status_code=400)
 
     def _probe(u: str):
-        cap = cv2.VideoCapture(int(u) if u.isdigit() else u)
+        cap = cv2.VideoCapture(u)
         ok, frame = cap.read()
         w = cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 0
         h = cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 0
@@ -1671,12 +1626,10 @@ async def update_camera_config(cam_id: int, request: Request):
             cam.pop("profile", None)
         redis.set(f"camera_backend:{cam_id}", backend)
         cam["url"] = url
-        if url.isdigit() or url.startswith("/dev/"):
-            cam["type"] = "local"
-        elif url.startswith("rtsp://"):
-            cam["type"] = "rtsp"
-        else:
-            cam["type"] = "http"
+        try:
+            cam["type"] = get_stream_type(url)
+        except ValueError:
+            return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
         save_cameras(cams, redis)
     tr = trackers_map.get(cam_id)
     if tr:

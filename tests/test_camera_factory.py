@@ -40,13 +40,6 @@ def test_rtsp_backend_selection(monkeypatch):
     assert isinstance(cap, Dummy) and cap.opened
 
 
-def test_local_backend(monkeypatch):
-    monkeypatch.setattr(cf, "LocalCvSource", Dummy)
-    shared_config["camera"] = {"mode": "local", "uri": 0}
-    cap, _ = cf.open_capture(shared_config, 1)
-    assert isinstance(cap, Dummy) and cap.opened
-
-
 def test_http_backend(monkeypatch):
     monkeypatch.setattr(cf, "HttpMjpegSource", Dummy)
     shared_config["camera"] = {"mode": "http", "uri": "http://x"}

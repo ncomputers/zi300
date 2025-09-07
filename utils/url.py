@@ -52,16 +52,16 @@ def get_stream_type(url: str) -> str:
     Returns
     -------
     str
-        ``"rtsp"`` when the URL starts with ``rtsp://``, ``"http"`` when it
-        begins with ``http://`` or ``https://`` and ``"local"`` for anything
-        else.
+        ``"rtsp"`` when the URL starts with ``rtsp://`` and ``"http"`` when it
+        begins with ``http://`` or ``https://``. A :class:`ValueError` is raised
+        for any other scheme.
     """
     lowered = url.lower()
     if lowered.startswith("rtsp://"):
         return "rtsp"
     if lowered.startswith("http://") or lowered.startswith("https://"):
         return "http"
-    return "local"
+    raise ValueError("unsupported url scheme")
 
 
 _CRED_RE = re.compile(r"(?<=://)([^:@\s]+):([^@/\s]+)@")

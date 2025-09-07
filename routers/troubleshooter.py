@@ -43,14 +43,12 @@ def _get_camera_mode(cam: Dict[str, Any]) -> str:
     mode = (cam.get("mode") or cam.get("type") or "").lower()
     if mode == "http":
         mode = "mjpeg"
-    if mode not in {"rtsp", "mjpeg", "local", "screen"}:
+    if mode not in {"rtsp", "mjpeg", "screen"}:
         url = cam.get("url", "")
         if url.startswith("rtsp://"):
             mode = "rtsp"
         elif url.startswith("http://") or url.startswith("https://"):
             mode = "mjpeg"
-        elif url:
-            mode = "local"
         else:
             mode = "screen"
     return mode
