@@ -16,7 +16,6 @@ class CameraType(str, Enum):
     rtsp = "rtsp"
     rtmp = "rtmp"
     srt = "srt"
-    local = "local"
 
 
 class Orientation(str, Enum):
@@ -98,7 +97,7 @@ class CameraBase(BaseModel):
             elif url.startswith("srt://"):
                 expected = CameraType.srt
             else:
-                expected = CameraType.local
+                raise ValueError("unsupported url scheme")
             if data.type is None:
                 data.type = expected
             elif data.type != expected:

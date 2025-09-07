@@ -11,9 +11,13 @@ from modules.capture import (
     FrameSourceError,
     HttpMjpegSource,
     IFrameSource,
-    LocalCvSource,
     RtspFfmpegSource,
 )
+
+try:  # pragma: no cover - optional gstreamer source
+    from modules.capture import RtspGstSource  # type: ignore
+except Exception:  # pragma: no cover - gstreamer not available
+    RtspGstSource = None  # type: ignore
 from utils.url import mask_creds, with_rtsp_transport
 
 
@@ -130,10 +134,6 @@ async def async_open_capture(
     if transport is None:
         transport = "tcp" if cam_cfg.get("tcp", True) else "udp"
 
-    if src_type == "local":
-        cap = LocalCvSource(src or 0, cam_id=cam_id)
-        await asyncio.to_thread(cap.open)
-        return cap, transport
     if src_type == "http":
         max_queue = capture_buffer or cam_cfg.get("max_queue", 1)
         cap = HttpMjpegSource(str(src), cam_id=cam_id, max_queue=max_queue)
