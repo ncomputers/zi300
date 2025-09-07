@@ -255,13 +255,12 @@ if (typeof document !== "undefined" && !globalThis.__TEST__) {
         inp.addEventListener("change", update);
       });
 
-    const debugIds = [
-      "showLines",
-      "showIds",
-      "showTrackLines",
-      "showCounts",
-      "showFaceBoxes",
-    ];
+      const debugIds = [
+        "showLines",
+        "showIds",
+        "showTrackLines",
+        "showCounts",
+      ];
     const feeds = document.querySelectorAll("img.feed-img");
 
     function updateFeeds() {

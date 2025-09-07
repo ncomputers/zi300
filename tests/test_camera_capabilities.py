@@ -11,7 +11,6 @@ def _patch(monkeypatch):
             "license_info": {
                 "features": {
                     "ppe_detection": True,
-                    "face_recognition": True,
                     "in_out_counting": True,
                 }
             }

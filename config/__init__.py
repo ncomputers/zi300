@@ -9,7 +9,6 @@ from .constants import (
     COUNT_GROUPS,
     DEFAULT_CONFIG,
     DEFAULT_MODULES,
-    FACE_THRESHOLDS,
     MODEL_CLASSES,
     OTHER_CLASSES,
     PPE_ITEMS,
@@ -37,9 +36,6 @@ def set_config(cfg: dict) -> None:
     config.clear()
     config.update(DEFAULT_CONFIG)
     config.update(cfg)
-    FACE_THRESHOLDS.blur_detection = config.get(
-        "blur_detection_thresh", FACE_THRESHOLDS.blur_detection
-    )
 
 
 __all__ = [
@@ -62,7 +58,6 @@ __all__ = [
     "COUNT_GROUPS",
     "DEFAULT_CONFIG",
     "DEFAULT_MODULES",
-    "FACE_THRESHOLDS",
     "MODEL_CLASSES",
     "OTHER_CLASSES",
     "PPE_ITEMS",

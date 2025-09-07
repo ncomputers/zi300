@@ -49,7 +49,6 @@ def test_concurrent_toggle_show(monkeypatch):
             "type": "rtsp",
             "tasks": [],
             "ppe": False,
-            "face_recognition": False,
             "enabled": True,
             "show": False,
             "reverse": False,

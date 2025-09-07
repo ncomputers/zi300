@@ -19,7 +19,6 @@ def test_generate_and_verify():
         features={
             "in_out_counting": True,
             "ppe_detection": True,
-            "face_recognition": False,
         },
         client="Test",
     )

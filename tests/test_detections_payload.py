@@ -32,12 +32,6 @@ def test_build_payload_tracks_box():
     assert payload["tracks"] == [{"id": 1, "box": [0, 0, 10, 10], "label": "", "conf": 0.0}]
 
 
-def test_build_payload_includes_face_box():
-    tracker = FakeTracker({1: {"bbox": (0, 0, 10, 10), "face": (2, 2, 4, 4)}})
-    payload = asyncio.run(_build_payload(1, tracker, {}, set()))
-    assert payload["tracks"][0]["face"] == [2, 2, 4, 4]
-
-
 def test_build_payload_no_fake_ppe():
     tracker = FakeTracker({})
     payload = asyncio.run(_build_payload(1, tracker, {}, {"helmet"}))
