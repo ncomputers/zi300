@@ -18,6 +18,7 @@ from server.config import _load_secret_key
 from server.startup import handle_unexpected_error
 from server.startup import init_app as _init_app
 from server.startup import lifespan
+from utils.redis import get_sync_client as _get_sync_client
 
 
 def init_app(
@@ -26,6 +27,11 @@ def init_app(
     workers: int | None = None,
 ):
     return _init_app(app, config_path=config_path, stream_url=stream_url, workers=workers)
+
+
+def get_sync_client(url: str | None = None):
+    """Expose sync Redis client for tests."""
+    return _get_sync_client(url)
 
 
 try:  # pragma: no cover - middleware optional

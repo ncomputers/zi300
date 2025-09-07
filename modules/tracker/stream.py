@@ -11,11 +11,6 @@ try:  # OpenCV may be missing in lightweight test environments
 except Exception:  # pragma: no cover - optional dependency
     cv2 = None  # type: ignore
 
-try:  # optional heavy dependency
-    import torch  # type: ignore
-except ModuleNotFoundError:  # pragma: no cover - torch is optional in tests
-    torch = None
-
 from app.core.perf import PERF
 from core.events import CAPTURE_ERROR, CAPTURE_READ_FAIL, CAPTURE_START, CAPTURE_STOP
 from modules.camera_factory import CaptureConfig, StreamUnavailable, open_capture
@@ -70,12 +65,6 @@ class CaptureWorker:
         prev_gray = None
         while t.running:
             try:
-                dev = getattr(t, "device", None)
-                if isinstance(dev, str):
-                    use_gpu = dev.startswith("cuda")
-                else:
-                    use_gpu = getattr(dev, "type", "") == "cuda"
-
                 cap_cfg = CaptureConfig(
                     uri=t.src,
                     resolution=t.resolution,
@@ -86,8 +75,6 @@ class CaptureWorker:
                     t.cfg,
                     cap_cfg,
                     t.cam_id,
-                    t.src_type,
-                    use_gpu,
                     capture_buffer=t.cfg.get("capture_buffer", 3),
                     backend_priority=t.cfg.get("backend_priority"),
                     ffmpeg_flags=t.cfg.get("ffmpeg_flags"),
@@ -204,22 +191,6 @@ class CaptureWorker:
                     t.raw_frame = frame
                     if t.frame_callback:
                         t.frame_callback(t.cam_id, frame.copy())
-                    if (
-                        use_gpu
-                        and torch is not None
-                        and not torch.cuda.is_available()
-                        and not getattr(t, "_warned_no_cuda", False)
-                    ):
-                        log_warn(
-                            CAPTURE_ERROR,
-                            camera_id=t.cam_id,
-                            mode=t.stream_mode,
-                            url=t.src,
-                            code="cuda_fallback",
-                            rc=0,
-                            ffmpeg_tail="",
-                        )
-                        t._warned_no_cuda = True
                     try:
                         t.frame_queue.put(frame, timeout=1)
                         PERF[t.cam_id].qdepth = t.frame_queue.qsize()

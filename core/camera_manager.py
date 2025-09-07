@@ -39,7 +39,11 @@ class CameraManager:
         self._state: Dict[int, RetryState] = {}
         self._latest_frames: Dict[int, Dict[str, object]] = {}
         self._latest_lock = asyncio.Lock()
-        self._loop = asyncio.get_event_loop()
+        try:
+            self._loop = asyncio.get_event_loop()
+        except RuntimeError:
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
 
     def _get_state(self, cam_id: int) -> RetryState:
         return self._state.setdefault(cam_id, RetryState())
@@ -205,7 +209,7 @@ class CameraManager:
         try:
             cap_cfg = CaptureConfig(uri=url)
             cap, _ = await async_open_capture(
-                self.cfg, cap_cfg, cam_id, cam.get("type") if cam else None
+                self.cfg, cap_cfg, cam_id
             )
             try:
                 res = await asyncio.to_thread(cap.read, timeout)

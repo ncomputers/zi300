@@ -114,8 +114,6 @@ async def async_open_capture(
     cfg: dict[str, Any],
     cap_cfg: CaptureConfig,
     cam_id: int | None = None,
-    src_type: str | None = None,
-    use_gpu: bool = False,
     **kwargs: Any,
 ) -> tuple[IFrameSource, str]:
     """Asynchronously instantiate and open a frame source."""
@@ -123,15 +121,13 @@ async def async_open_capture(
     cam_cfg = cfg.get("camera", {})
     cam_id = cam_id if cam_id is not None else 0
     src = cap_cfg.uri if cap_cfg.uri is not None else cam_cfg.get("uri", "")
-    if src_type is None:
-        src_type = cam_cfg.get("mode", "rtsp")
+    src_type = cam_cfg.get("mode", "rtsp")
 
     transport = cap_cfg.transport
     width, height = (None, None)
     if cap_cfg.resolution and len(cap_cfg.resolution) == 2:
         width, height = cap_cfg.resolution
     latency = _clamp_latency(cap_cfg.latency_ms)
-    capture_buffer = kwargs.pop("capture_buffer", None)
     if src_type == "rtsp" and transport is None and isinstance(src, str):
         try:
             probed_url, transport, w_p, h_p, _ = await async_probe_rtsp(src)
@@ -183,8 +179,6 @@ def open_capture(
     cfg: dict[str, Any],
     cap_cfg: CaptureConfig,
     cam_id: int | None = None,
-    src_type: str | None = None,
-    use_gpu: bool = False,
     **kwargs: Any,
 ) -> tuple[IFrameSource, str]:
     """Instantiate and open a frame source synchronously.
@@ -197,8 +191,6 @@ def open_capture(
             cfg,
             cap_cfg,
             cam_id,
-            src_type,
-            use_gpu,
             **kwargs,
         )
     )
