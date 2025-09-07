@@ -8,7 +8,6 @@ __all__ = [
     "reports",
     "ppe_reports",
     "settings",
-    "api_identities",
     "api_summary",
     "blueprints",
     "mcp",

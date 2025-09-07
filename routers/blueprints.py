@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from . import alerts, api_identities, api_summary, auth
+from . import alerts, api_summary, auth
 from . import cameras as cam_routes
 from . import config_api, dashboard, debug, detections, diagnostics, feedback, health
 from . import help as help_pages
@@ -22,7 +22,6 @@ MODULES = [
     alerts,
     auth,
     admin_users,
-    api_identities,
     api_summary,
     health,
     profile,
@@ -66,7 +65,6 @@ def init_all(
     ppe_reports.init_context(cfg, trackers, redis_client, templates_dir, redis_facade)
     alerts.init_context(cfg, trackers, redis_client, templates_dir, config_path, redis_facade)
     admin_users.init_context(cfg, redis_client, templates_dir, config_path, redis_facade)
-    api_identities.init_context(cfg, redis_client, redis_facade)
     diagnostics.init_context(cfg, trackers, cams, templates_dir, redis_facade)
     troubleshooter.init_context(cfg, trackers, cams, templates_dir, redis_facade)
 
