@@ -6,12 +6,49 @@ import select
 import subprocess
 import threading
 import time
-from typing import Dict, List, Optional
+from collections import deque
+from typing import Deque, Dict, List, Optional
 
 import numpy as np
 
 from utils import logx
 from utils.url import mask_credentials
+
+
+class OverwriteQueue:
+    """A minimal queue that overwrites the oldest item when full."""
+
+    def __init__(self, maxlen: int = 1) -> None:
+        self._data: Deque[np.ndarray] = deque(maxlen=maxlen)
+        self._cond = threading.Condition()
+
+    def put(self, item: np.ndarray) -> None:
+        with self._cond:
+            if len(self._data) == self._data.maxlen:
+                self._data.popleft()
+            self._data.append(item)
+            self._cond.notify()
+
+    def put_nowait(self, item: np.ndarray) -> None:
+        self.put(item)
+
+    def get(self, block: bool = True, timeout: float | None = None) -> np.ndarray:
+        with self._cond:
+            if not block:
+                if not self._data:
+                    raise queue.Empty
+                return self._data.popleft()
+
+            end = None if timeout is None else time.time() + timeout
+            while not self._data:
+                remaining = None if end is None else end - time.time()
+                if end is not None and remaining <= 0:
+                    raise queue.Empty
+                self._cond.wait(remaining)
+            return self._data.popleft()
+
+    def get_nowait(self) -> np.ndarray:
+        return self.get(block=False)
 
 
 class RtspConnector:
@@ -54,7 +91,7 @@ class RtspConnector:
         self._proc: Optional[subprocess.Popen[bytes]] = None
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
-        self._subs: List[queue.Queue[np.ndarray]] = []
+        self._subs: List[OverwriteQueue] = []
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -76,8 +113,8 @@ class RtspConnector:
             self._thread.join(timeout=2)
         self.state = self.STOPPED
 
-    def subscribe(self, maxsize: int = 1) -> queue.Queue[np.ndarray]:
-        q: queue.Queue[np.ndarray] = queue.Queue(maxsize=maxsize)
+    def subscribe(self, maxsize: int = 1) -> "OverwriteQueue":
+        q = OverwriteQueue(maxlen=maxsize)
         with self._lock:
             self._subs.append(q)
         return q
@@ -289,17 +326,7 @@ class RtspConnector:
         with self._lock:
             subs = list(self._subs)
         for q in subs:
-            try:
-                q.put_nowait(frame)
-            except queue.Full:
-                try:
-                    q.get_nowait()
-                except Exception:
-                    pass
-                try:
-                    q.put_nowait(frame)
-                except queue.Full:
-                    pass
+            q.put(frame)
         self._seq += 1
         logx.event(
             "FRAME_PUSH",
