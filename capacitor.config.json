@@ -4,6 +4,7 @@
   "webDir": "public",
   "server": {
     "url": "https://app.rapidcorp.in"
+
   },
   "extra": {
     "manifestUrl": "/manifest.json",

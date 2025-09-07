@@ -1,7 +1,7 @@
 {
   "appName": "Mobile App",
   "appId": "com.rapidcorp.app",
-  "serverUrl": "https://app.rapidcorp.in",
+  "serverUrl": "https://app.rapidcorp.in",\
   "manifestUrl": "/manifest.json",
   "icons": {
     "android": "res/android/icon.png",
