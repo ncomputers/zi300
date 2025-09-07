@@ -4,33 +4,16 @@ import subprocess
 
 from loguru import logger
 
+from utils.ffmpeg import build_rtsp_base_cmd
+
 
 def capture_snapshot(url: str) -> bytes:
     """Return a single JPEG frame from ``url`` using ffmpeg.
 
     Raises ``RuntimeError`` if the command fails.
     """
-    cmd = [
-        "ffmpeg",
-        "-nostdin",
-        "-hide_banner",
-        "-loglevel",
-        "error",
-        "-rtsp_transport",
-        "tcp",
-        "-i",
-        url,
-        "-an",
-        "-flags",
-        "low_delay",
-        "-fflags",
-        "nobuffer",
-        "-frames:v",
-        "1",
-        "-f",
-        "image2",
-        "pipe:1",
-    ]
+    cmd = build_rtsp_base_cmd(url)
+    cmd += ["-frames:v", "1", "-f", "image2", "pipe:1"]
     logger.debug("snapshot cmd: {}", " ".join(cmd))
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     if res.returncode != 0:
