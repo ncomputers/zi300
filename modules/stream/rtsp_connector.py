@@ -172,16 +172,22 @@ class RtspConnector:
         """
         if not proc.stdout:
             raise EOFError("ffmpeg closed stdout")
-        ready, _, _ = select.select([proc.stdout], [], [], timeout)
-        if not ready:
-            raise TimeoutError
-        data = proc.stdout.read(self.frame_size)
-        if not data:
-            if proc.poll() is not None:
-                raise EOFError("ffmpeg closed stdout")
-            return None
-        if len(data) < self.frame_size:
-            return None
+        remaining = self.frame_size
+        chunks: list[bytes] = []
+        while remaining > 0:
+            ready, _, _ = select.select([proc.stdout], [], [], timeout)
+            if not ready:
+                # no data in this window → let watchdog handle timeout/backoff
+                raise TimeoutError
+            chunk = proc.stdout.read(remaining)
+            if not chunk:
+                if proc.poll() is not None:
+                    raise EOFError("ffmpeg closed stdout")
+                # process alive but nothing yet → skip this tick
+                return None
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        data = b"".join(chunks)
         return np.frombuffer(data, dtype=np.uint8).reshape(self.height, self.width, 3)
 
     def _handle_watchdog(self, now: float, start_time: float, masked_url: str) -> bool:
@@ -229,14 +235,10 @@ class RtspConnector:
     # ------------------------------------------------------------------
     def _run(self) -> None:
         backoff = 1
-        cmd = build_rtsp_base_cmd(self.url)
-        cmd += [
-            "-f",
-            "rawvideo",
-            "-pix_fmt",
-            "bgr24",
-            "pipe:1",
-        ]
+        cmd = build_rtsp_base_cmd(self.url)  # [-rtsp_transport tcp, -i <url>, -an]
+        # Force deterministic WxH (model size), avoid reshape mismatch:
+        cmd += ["-vf", f"scale={self.width}:{self.height}:flags=bicubic"]
+        cmd += ["-f", "rawvideo", "-pix_fmt", "bgr24", "pipe:1"]
         masked_url = mask_credentials(self.url)
         logx.event(
             "capture_start",
