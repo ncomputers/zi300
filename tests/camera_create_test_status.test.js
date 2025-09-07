@@ -71,7 +71,7 @@ test('Next button requires successful test and resets on input change', async ()
   const name = document.getElementById('camName');
   const url = document.getElementById('camUrl');
   name.value = 'test';
-  url.value = 'rtsp://example.com';
+  url.value = 'http://example.com';
   name.dispatchEvent(new Event('input'));
   url.dispatchEvent(new Event('input'));
 
@@ -79,10 +79,9 @@ test('Next button requires successful test and resets on input change', async ()
   testConn.click();
   await Promise.resolve();
   await Promise.resolve();
-  await new Promise(r => setTimeout(r, 0));
   expect(toPreview.disabled).toBe(false);
 
-  url.value = 'rtsp://changed.example.com';
+  url.value = 'http://changed.example.com';
   url.dispatchEvent(new Event('input'));
   expect(toPreview.disabled).toBe(true);
   expect(confirmCam.disabled).toBe(true);

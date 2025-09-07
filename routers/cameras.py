@@ -114,10 +114,10 @@ def _init_preview_stream(cam: dict) -> None:
     """Initialize preview streaming for ``cam``."""
     global rtsp_connectors, _frame_buses, preview_publisher
     try:
-        res = cam.get("resolution") or "640x640"
+        res = cam.get("resolution") or "640x480"
         w, h = (int(x) for x in res.lower().split("x"))
     except Exception:
-        w, h = (640, 640)
+        w, h = (640, 480)
     bus = FrameBus()
     conn = RtspConnector(cam.get("url", ""), w, h, camera_id=cam.get("id"))
     q = conn.subscribe()
