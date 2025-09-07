@@ -77,7 +77,7 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-ra -k 'not test_faces and not test_tracker_redis and not test_admin_user_management'"
+addopts = "-ra"
 markers = [
     "slow: marks tests as slow",
     "integration: marks tests that require external services",

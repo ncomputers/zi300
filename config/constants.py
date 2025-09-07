@@ -1,22 +1,8 @@
 """Configuration constants for the application."""
 
 import os
-from dataclasses import dataclass
 
 from app.core.utils import parse_bool
-
-
-@dataclass
-class FaceThresholds:
-    """Centralized face processing thresholds."""
-
-    recognition_match: float = 0.6
-    db_duplicate: float = 0.95
-    duplicate_suppression: float = 0.5
-    blur_detection: float = 100.0
-
-
-FACE_THRESHOLDS = FaceThresholds()
 
 DEFAULT_MODULES = ["dashboard", "visitors", "reports", "settings"]
 
@@ -29,7 +15,6 @@ DEFAULT_CONFIG = {
     "camera_id": "",
     "license_info": {"features": {"visitor_mgmt": True}},
     "features": {"visitor_mgmt": True},
-    "blur_detection_thresh": FACE_THRESHOLDS.blur_detection,
     "local_buffer_size": 1,
     "model_version": 1,
     "preview_scale": 1.0,
@@ -210,7 +195,6 @@ BRANDING_DEFAULTS = {
 }
 
 __all__ = [
-    "FACE_THRESHOLDS",
     "DEFAULT_CONFIG",
     "DEFAULT_MODULES",
     "MODEL_CLASSES",

@@ -11,7 +11,6 @@ def _base_camera():
         "type": "rtsp",
         "tasks": [],
         "ppe": False,
-        "face_recognition": False,
         "enabled": True,
         "show": True,
         "reverse": False,
