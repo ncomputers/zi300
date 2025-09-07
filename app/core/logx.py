@@ -8,7 +8,7 @@ from .utils import mtime
 _last: Dict[str, float] = {}
 
 
-def get_logger(name: str = "vms26") -> logging.Logger:
+def get_logger(name: str = "app") -> logging.Logger:
     """Return a basic stderr logger configured once."""
     logger = logging.getLogger(name)
     if not logger.handlers:

@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="/static/css/app.css" rel="stylesheet">
 </head>
-<body class="vms-body">
+<body>
 <!-- ===== Section: Navbar ===== -->
 {% include 'partials/header.html' %}
 <!-- ===== Section: Main Content ===== -->
@@ -18,7 +18,7 @@
     <a href="/cameras/add" class="btn btn-primary mb-4">Add Camera</a>
     <div class="table-responsive">
         <table class="table table-bordered">
-        <thead><tr><th>ID</th><th>Name</th><th>URL</th><th>Status</th><th>PPE</th><th>VMS</th><th>In/Out Count</th><th>Line</th><th>Orientation</th><th>Transport</th><th>Res</th><th>Rev</th><th>Enabled</th><th>Show</th><th>Actions</th></tr></thead>
+        <thead><tr><th>ID</th><th>Name</th><th>URL</th><th>Status</th><th>PPE</th><th>In/Out Count</th><th>Line</th><th>Orientation</th><th>Transport</th><th>Res</th><th>Rev</th><th>Enabled</th><th>Show</th><th>Actions</th></tr></thead>
 
 
         <tbody id="camBody">
@@ -50,18 +50,6 @@
                         <input type="checkbox" data-feature="ppe_detection" class="form-check-input ppe-check" checked>
                     {% else %}
                         <input type="checkbox" data-feature="ppe_detection" class="form-check-input ppe-check">
-                    {% endif %}
-                {% endif %}
-            </td>
-            {% set locked = not cfg.features.visitor_mgmt %}
-            <td class="col-vms">
-                {% if locked %}
-                    <i class="bi bi-lock-fill text-muted" data-bs-toggle="tooltip" title="VMS not in license"></i>
-                {% else %}
-                    {% if c.visitor_mgmt %}
-                        <input type="checkbox" data-feature="visitor_mgmt" class="form-check-input vms-check" checked>
-                    {% else %}
-                        <input type="checkbox" data-feature="visitor_mgmt" class="form-check-input vms-check">
                     {% endif %}
                 {% endif %}
             </td>
@@ -251,9 +239,8 @@ document.getElementById('camBody').addEventListener('click',async e=>{
     const res=row.querySelector('.res-select').value;
     const reverse=row.querySelector('.reverse-check').checked;
     const ppe=row.querySelector('[data-feature="ppe_detection"]')?.checked;
-    const visitor=row.querySelector('[data-feature="visitor_mgmt"]')?.checked;
     const counting=row.querySelector('.count-check')?.checked;
-    const r=await fetch('/cameras/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ppe,visitor_mgmt:visitor,counting,reverse,line_orientation:lineOrient,orientation:orient,transport,resolution:res})});
+    const r=await fetch('/cameras/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ppe,counting,reverse,line_orientation:lineOrient,orientation:orient,transport,resolution:res})});
     if(!r.ok){
       const d=await r.json().catch(()=>({}));
       const msg=d.error||'Save failed';

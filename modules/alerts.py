@@ -6,7 +6,7 @@ import io
 import json
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
@@ -99,35 +99,6 @@ class AlertWorker:
             rows.append(e)
         return rows
 
-    # _send_vms_report routine
-    def _send_vms_report(self, rows, recipients, subject, attach=True):
-        """Email a visitor management report built from recent log rows."""
-        wb = Workbook()
-        ws = wb.active
-        ws.append(["Time", "Gate", "Name", "Phone", "Host"])
-        for r in rows:
-            ws.append(
-                [
-                    datetime.fromtimestamp(r["ts"]).strftime("%Y-%m-%d %H:%M"),
-                    r.get("gate_id"),
-                    r.get("name"),
-                    r.get("phone"),
-                    r.get("host"),
-                ]
-            )
-        bio = io.BytesIO()
-        wb.save(bio)
-        bio.seek(0)
-        send_email(
-            subject,
-            "See attached visitor report",
-            recipients,
-            self.cfg.get("email", {}),
-            attachment=bio.getvalue(),
-            attachment_name="vms_report.xlsx",
-            attachment_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
     # _send_report routine
     def _send_report(self, rows, recipients, subject, attach=True):
         """Compile PPE log rows into a spreadsheet and email it."""
@@ -189,10 +160,7 @@ class AlertWorker:
                 continue
             last_key = f"alert_rule_{i}_last"
             last_ts = int(float(self.redis.get(last_key) or 0))
-            if metric == events.VISITOR_REGISTERED:
-                fetch_rows = lambda s, e: self._collect_rows("vms_logs", s, e)
-                send_report = self._send_vms_report
-            elif metric in events.ALL_EVENTS:
+            if metric in events.ALL_EVENTS:
                 fetch_rows = lambda s, e: self._collect_rows(
                     "events", s, e, lambda r: r.get("event") == metric
                 )

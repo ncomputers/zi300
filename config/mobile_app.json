@@ -1,7 +1,7 @@
 {
-  "appName": "VMS Mobile",
-  "appId": "com.rapidcorp.vms",
-  "serverUrl": "https://vms.rapidcorp.in",
+  "appName": "Mobile App",
+  "appId": "com.rapidcorp.app",
+  "serverUrl": "https://app.rapidcorp.in",
   "manifestUrl": "/manifest.json",
   "icons": {
     "android": "res/android/icon.png",

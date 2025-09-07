@@ -1,18 +1,5 @@
-{% set cfg = cfg if cfg is defined else {} %}
 <li class="nav-item"><a class="nav-link" href="/settings">Settings</a></li>
 <li class="nav-item ms-lg-3"><a class="nav-link" href="/alerts">Email/Alerts</a></li>
-{#
-  Only show visitor-management links when both the feature flag and the
-  corresponding license capability are enabled.  Using ``cfg.get`` avoids
-  attribute errors if the nested dictionaries are missing and makes the
-  condition resilient to runtime test modifications of the global config.
-#}
-{% set lic = cfg.get('license_info', {}).get('features', {}).get('visitor_mgmt', True) %}
-{% set has_vms = cfg.get('features', {}).get('visitor_mgmt', False) and lic %}
-{% set session = request.session if request else {} %}
-{% set role = session.get('user', {}).get('role') %}
-{% if has_vms %}
-{% endif %}
 <li class="nav-item dropdown ms-lg-3">
   <a class="nav-link dropdown-toggle" href="#" id="reportsDropdown" role="button"
      data-bs-toggle="dropdown" aria-expanded="false">Reports</a>
