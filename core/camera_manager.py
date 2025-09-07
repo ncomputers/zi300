@@ -144,12 +144,18 @@ class CameraManager:
             f"transport={cam.get('rtsp_transport')} flags={flags}"
         )
 
-        async def _do_restart() -> None:
+        try:
             await asyncio.to_thread(self.stop_tracker_fn, camera_id, self.trackers)
-            if cam.get("enabled", True) and self.cfg.get("enable_person_tracking", True):
-                await self._attempt_start(cam)
+        except Exception:
+            logger.exception(f"[proc:{camera_id}] tracker stop failed")
+            raise
 
-        asyncio.create_task(_do_restart())
+        if cam.get("enabled", True) and self.cfg.get("enable_person_tracking", True):
+            try:
+                await self._attempt_start(cam)
+            except Exception:
+                logger.exception(f"[proc:{camera_id}] tracker start failed")
+                raise
 
     def refresh_flags(self, camera_id: int) -> None:
         tr = self.trackers.get(camera_id)
