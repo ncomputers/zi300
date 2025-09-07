@@ -13,6 +13,7 @@ probed with ``ffprobe`` when not specified explicitly.
 import logging
 import os
 import queue
+import random
 import shlex
 import subprocess
 import threading
@@ -26,9 +27,9 @@ from app.core.utils import getenv_num
 from utils.logging import log_capture_event
 from utils.logx import log_throttled
 from utils.url import mask_credentials
-import random
 
-from .base import Backoff, FrameSourceError, IFrameSource
+from .backoff import Backoff
+from .base import FrameSourceError, IFrameSource
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +305,9 @@ class RtspFfmpegSource(IFrameSource):
             if not first_frame_seen:
                 latency_ms = int((now - (grace_deadline - self.first_frame_grace)) * 1000)
                 self.first_frame_ms = latency_ms
-                log_capture_event(self.cam_id, "first_frame", backend="ffmpeg", latency_ms=latency_ms)
+                log_capture_event(
+                    self.cam_id, "first_frame", backend="ffmpeg", latency_ms=latency_ms
+                )
                 first_frame_seen = True
             if self._frame_queue:
                 if self._frame_queue.full():
