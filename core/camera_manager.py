@@ -151,13 +151,10 @@ class CameraManager:
 
         asyncio.create_task(_do_restart())
 
-    async def refresh_flags(self, camera_id: int) -> None:
-        async def _refresh() -> None:
-            tr = self.trackers.get(camera_id)
-            if tr:
-                tr.restart_capture = True
-
-        asyncio.create_task(_refresh())
+    def refresh_flags(self, camera_id: int) -> None:
+        tr = self.trackers.get(camera_id)
+        if tr:
+            tr.restart_capture = True
 
     @staticmethod
     def _cap_frame(frame: np.ndarray) -> np.ndarray:
