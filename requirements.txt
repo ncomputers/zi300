@@ -36,3 +36,4 @@ beautifulsoup4
 pydantic
 keyring
 PyYAML
+mjpeg-streamer
