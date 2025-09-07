@@ -49,7 +49,6 @@ def client() -> TestClient:
             "/cameras/probe",
             {
                 "name": "cam1",
-                "type": "RTSP",
                 "url": "rtsp://example",
                 "transport": "TCP",
                 "timeout_sec": 8,
@@ -121,7 +120,6 @@ def test_probe_endpoints(
 def test_camera_probe_bad_url(client: TestClient):
     body = {
         "name": "cam1",
-        "type": "RTSP",
         "url": "http://example",  # not rtsp
         "transport": "TCP",
         "timeout_sec": 5,

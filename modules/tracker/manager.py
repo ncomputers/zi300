@@ -30,7 +30,6 @@ from utils import logx
 from utils.gpu import get_device
 from utils.redis import EVENTS_STREAM, get_sync_client, xadd_event
 from utils.time import format_ts
-from utils.url import get_stream_type
 
 from ..duplicate_filter import DuplicateFilter
 from ..utils import SNAP_DIR, lock
@@ -625,7 +624,7 @@ class PersonTracker:
         self.pipeline = cfg.get("pipeline", "")
         self.cam_id = cam_id
         self.src = src
-        self.src_type = src_type or cfg.get("type") or get_stream_type(src)
+        self.src_type = src_type or cfg.get("type") or "rtsp"
         self.classes = classes
         self.tasks = tasks or ["in_count", "out_count"]
         self.count_classes = cfg.get("count_classes", [])

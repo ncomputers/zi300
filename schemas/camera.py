@@ -9,15 +9,6 @@ from typing import Optional
 from pydantic import BaseModel, ValidationInfo, model_validator
 
 
-class CameraType(str, Enum):
-    """Supported camera source types."""
-
-    http = "http"
-    rtsp = "rtsp"
-    rtmp = "rtmp"
-    srt = "srt"
-
-
 class Orientation(str, Enum):
     """Image orientation options."""
 
@@ -43,11 +34,6 @@ class Resolution(str, Enum):
     r1080p = "1080p"
 
 
-class Profile(str, Enum):
-    """Profile names for multi-stream cameras."""
-
-    main = "main"
-    sub = "sub"
 
 
 class Point(BaseModel):
@@ -62,8 +48,7 @@ class CameraBase(BaseModel):
 
     name: Optional[str] = None
     url: Optional[str] = None
-    type: Optional[CameraType] = None
-    profile: Optional[Profile] = None
+    type: Optional[str] = None
     orientation: Optional[Orientation] = None
     transport: Optional[Transport] = None
     resolution: Optional[Resolution | str] = None
@@ -86,22 +71,10 @@ class CameraBase(BaseModel):
     @model_validator(mode="after")
     def _validate(cls, data: "CameraBase", info: ValidationInfo) -> "CameraBase":
         url = (data.url or "").lower()
-        if url:
-            expected: CameraType
-            if url.startswith("rtsp://"):
-                expected = CameraType.rtsp
-            elif url.startswith("http://") or url.startswith("https://"):
-                expected = CameraType.http
-            elif url.startswith("rtmp://"):
-                expected = CameraType.rtmp
-            elif url.startswith("srt://"):
-                expected = CameraType.srt
-            else:
-                raise ValueError("unsupported url scheme")
-            if data.type is None:
-                data.type = expected
-            elif data.type != expected:
-                raise ValueError("url scheme does not match type")
+        if url and not url.startswith("rtsp://"):
+            raise ValueError("unsupported url scheme")
+        if data.type is None:
+            data.type = "rtsp"
 
         if data.resolution:
             if (

@@ -1,14 +1,14 @@
 import pytest
 from pydantic import ValidationError
 
-from schemas.camera import CameraCreate, CameraType, CameraUpdate, Orientation, Point
+from schemas.camera import CameraCreate, CameraUpdate, Orientation, Point
 
 
 def test_url_type_validation():
     cam = CameraCreate(name="c1", url="rtsp://example")
-    assert cam.type == CameraType.rtsp
+    assert cam.type == "rtsp"
     with pytest.raises(ValidationError):
-        CameraCreate(name="c2", url="http://example", type=CameraType.rtsp)
+        CameraCreate(name="c2", url="http://example")
 
 
 def test_line_optional_for_counting():
@@ -59,12 +59,12 @@ def test_update_uses_same_validation():
 def test_camera_happy_path():
     cam = CameraCreate(name="ok", url="rtsp://a", line=[Point(x=0, y=0), Point(x=1, y=1)])
     assert cam.orientation is Orientation.vertical
-    assert cam.type == CameraType.rtsp
+    assert cam.type == "rtsp"
 
 
 def test_bad_url_raises_error():
     with pytest.raises(ValidationError):
-        CameraCreate(name="c1", url="ftp://bad", type=CameraType.rtsp)
+        CameraCreate(name="c1", url="ftp://bad")
 
 
 def test_invalid_orientation_enum():

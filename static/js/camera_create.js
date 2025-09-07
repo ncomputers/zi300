@@ -5,8 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById(id) || (alt ? document.getElementById(alt) : null);
   const nameEl = getEl("name", "camName");
   const urlEl = getEl("url", "camUrl");
-  const typeEl = getEl("type", "camType");
-  const profileEl = getEl("profile", "camProfile");
   const orientationEl = getEl("orientation", "camLocation");
   const resolutionEl = getEl("resolution", "camRes");
   const transportEl = getEl("transport", "camStreamType");
@@ -37,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let previewUrl = null;
 
-  const allowedSchemes = ["rtsp:", "http:", "https:", "rtmp:", "srt:"];
+  const allowedSchemes = ["rtsp:"];
 
   function mask(text) {
     return text.replace(/(?<=:\/\/)([^:@\s]+):([^@\/\s]+)@/g, "***:***@");
@@ -104,8 +102,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return {
         name: nameEl?.value.trim(),
         url: urlEl?.value.trim(),
-        type: typeEl?.value,
-        profile: profileEl?.value,
         orientation: orientationEl?.value,
         resolution: resolutionEl?.value,
         transport: transportEl?.value || undefined,

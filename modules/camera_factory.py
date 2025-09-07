@@ -7,12 +7,7 @@ import json
 import logging
 from typing import Any
 
-from modules.capture import (
-    FrameSourceError,
-    HttpMjpegSource,
-    IFrameSource,
-    RtspFfmpegSource,
-)
+from modules.capture import FrameSourceError, IFrameSource, RtspFfmpegSource
 
 try:  # pragma: no cover - optional gstreamer source
     from modules.capture import RtspGstSource  # type: ignore
@@ -134,11 +129,6 @@ async def async_open_capture(
     if transport is None:
         transport = "tcp" if cam_cfg.get("tcp", True) else "udp"
 
-    if src_type == "http":
-        max_queue = capture_buffer or cam_cfg.get("max_queue", 1)
-        cap = HttpMjpegSource(str(src), cam_id=cam_id, max_queue=max_queue)
-        await asyncio.to_thread(cap.open)
-        return cap, transport
     if src_type != "rtsp":
         raise StreamUnavailable(f"unknown mode {src_type}")
 

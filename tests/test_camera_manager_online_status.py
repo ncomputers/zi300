@@ -9,7 +9,7 @@ from core.camera_manager import CameraManager
 def test_start_tracker_sets_redis_online():
     r = fakeredis.FakeRedis(decode_responses=True)
     trackers = {}
-    cams = [{"id": 1, "url": "", "type": "http", "tasks": []}]
+    cams = [{"id": 1, "url": "", "type": "rtsp", "tasks": []}]
 
     def start_tracker(cam, cfg, trackers_map, redis, cb=None):
         tr = SimpleNamespace(online=True)
