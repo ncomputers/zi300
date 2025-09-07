@@ -1,9 +1,9 @@
 {
-  "appId": "com.rapidcorp.vms",
-  "appName": "VMS Mobile",
+  "appId": "com.rapidcorp.mobile",
+  "appName": "Rapid Mobile",
   "webDir": "public",
   "server": {
-    "url": "https://vms.rapidcorp.in"
+    "url": "https://mobile.rapidcorp.in"
   },
   "extra": {
     "manifestUrl": "/manifest.json",
