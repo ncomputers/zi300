@@ -156,7 +156,7 @@
                         {{cam.name}}
                       </div>
                       <div class="feed-container">
-                        <img class="card-img-top feed-img" src="/camera" alt="feed">
+                        <img class="card-img-top feed-img" data-cam="{{ cam.id }}" src="{{ url_for('camera_mjpeg', camera_id=cam.id) }}" alt="feed">
 
                       </div>
 
@@ -262,7 +262,7 @@
         {% if cameras %}
         {% set cam = cameras[0] %}
         <div class="col-md-2">
-            <img class="img-fluid feed-img" src="/camera" alt="feed">
+            <img class="img-fluid feed-img" data-cam="{{ cam.id }}" src="{{ url_for('camera_mjpeg', camera_id=cam.id) }}" alt="feed">
         </div>
         {% endif %}
 
