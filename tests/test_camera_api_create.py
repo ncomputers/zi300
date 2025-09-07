@@ -46,7 +46,6 @@ def _payload():
     return {
         "name": "Cam",
         "url": "rtsp://user:pass@example.com/stream",
-        "profile": "recording",
         "orientation": "horizontal",
         "show": True,
         "transport": "udp",

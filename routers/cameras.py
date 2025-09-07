@@ -58,7 +58,7 @@ from utils.ffmpeg import build_snapshot_cmd
 from utils.ffmpeg_snapshot import capture_snapshot
 from utils.jpeg import encode_jpeg
 from utils.logx import log_throttled
-from utils.url import get_stream_type, mask_credentials
+from utils.url import mask_credentials
 
 # utility for resolving stream dimensions
 from utils.video import async_get_stream_resolution
@@ -388,10 +388,9 @@ async def create_camera_api(camera: dict):
             logger.error(f"[create_camera_api] auto-probe failed for {sanitized}: {e}")
             return JSONResponse({"error": "RTSP auto-probe failed"}, status_code=400)
     cam_dict["resolution"] = await _resolve_resolution(url, cam_dict.get("resolution"))
-    try:
-        cam_dict["type"] = get_stream_type(url)
-    except ValueError:
+    if not url.lower().startswith("rtsp://"):
         return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
+    cam_dict["type"] = "rtsp"
     async with cams_lock:
         cam_id = max([c["id"] for c in cams], default=0) + 1
         cam_dict["id"] = cam_id
@@ -596,10 +595,9 @@ async def add_camera(request: Request, manager: CameraManager = Depends(get_came
     resolution = await _resolve_resolution(url, data.get("resolution"))
     if not url:
         return JSONResponse({"error": "Missing URL"}, status_code=400)
-    try:
-        src_type = get_stream_type(url)
-    except ValueError:
+    if not url.lower().startswith("rtsp://"):
         return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
+    src_type = "rtsp"
     ready_timeout = data.get("ready_timeout")
     ready_frames = data.get("ready_frames")
     ready_duration = data.get("ready_duration")
@@ -868,13 +866,7 @@ async def update_camera(
         for cam in cams:
             if cam["id"] == cam_id:
                 url_check = data.get("url", cam.get("url", ""))
-                try:
-                    type_check = (
-                        get_stream_type(data["url"])
-                        if "url" in data
-                        else data.get("type", cam.get("type", "http"))
-                    )
-                except ValueError:
+                if "url" in data and not data["url"].lower().startswith("rtsp://"):
                     return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
                 ppe = data.get("ppe") if "ppe" in data else cam.get("ppe", False)
                 visitor = (
@@ -939,12 +931,11 @@ async def update_camera(
                 if "url" in data:
                     cam["url"] = data["url"]
                     restart_needed = True
-                    try:
-                        cam["type"] = get_stream_type(cam["url"])
-                    except ValueError:
+                    if not cam["url"].lower().startswith("rtsp://"):
                         return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
+                    cam["type"] = "rtsp"
                 if "type" in data:
-                    cam["type"] = data["type"]
+                    cam["type"] = "rtsp"
                     restart_needed = True
                 if "show" in data:
                     cam["show"] = bool(data["show"])
@@ -1626,10 +1617,9 @@ async def update_camera_config(cam_id: int, request: Request):
             cam.pop("profile", None)
         redis.set(f"camera_backend:{cam_id}", backend)
         cam["url"] = url
-        try:
-            cam["type"] = get_stream_type(url)
-        except ValueError:
+        if not url.lower().startswith("rtsp://"):
             return JSONResponse({"error": "unsupported_url_scheme"}, status_code=400)
+        cam["type"] = "rtsp"
         save_cameras(cams, redis)
     tr = trackers_map.get(cam_id)
     if tr:

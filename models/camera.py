@@ -11,11 +11,6 @@ from typing import Any, Optional
 from utils.redis import get_sync_client
 
 
-class CameraProfile(str, Enum):
-    main = "main"
-    sub = "sub"
-
-
 class Orientation(str, Enum):
     horizontal = "horizontal"
     vertical = "vertical"
@@ -31,8 +26,8 @@ class Transport(str, Enum):
 class Camera:
     id: str
     name: str
-    type: str
     url: str
+    type: str = "rtsp"
     analytics: dict[str, bool] = field(default_factory=dict)
     line: Optional[list[int]] = None
     orientation: Orientation = Orientation.vertical
@@ -40,7 +35,6 @@ class Camera:
     resolution: Optional[str] = None
     reverse: bool = False
     show: bool = False
-    profile: Optional[CameraProfile] = None
     site_id: Optional[str] = None
     enabled: bool = True
     archived: bool = False
@@ -63,7 +57,6 @@ def _serialize(cam: Camera) -> dict[str, Any]:
         "resolution": cam.resolution,
         "reverse": cam.reverse,
         "show": cam.show,
-        "profile": cam.profile.value if cam.profile else None,
         "site_id": cam.site_id,
         "enabled": cam.enabled,
         "archived": cam.archived,
@@ -78,8 +71,8 @@ def _deserialize(data: dict[str, Any]) -> Camera:
     return Camera(
         id=data["id"],
         name=data["name"],
-        type=data["type"],
         url=data["url"],
+        type=data.get("type", "rtsp"),
         analytics=data.get("analytics") or {},
         line=data.get("line"),
         orientation=Orientation(data["orientation"]),
@@ -87,7 +80,6 @@ def _deserialize(data: dict[str, Any]) -> Camera:
         resolution=data.get("resolution"),
         reverse=data.get("reverse", False),
         show=data.get("show", False),
-        profile=CameraProfile(data["profile"]) if data.get("profile") else None,
         site_id=data.get("site_id"),
         enabled=data.get("enabled", True),
         archived=data.get("archived", False),

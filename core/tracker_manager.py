@@ -143,7 +143,7 @@ def load_cameras(r: redis.Redis, default_url: str) -> List[dict]:
             for cam in cams:
                 cam["tasks"] = normalize_tasks(cam.get("tasks"))
                 cam.pop("mode", None)
-                cam.setdefault("type", "http")
+                cam.setdefault("type", "rtsp")
                 cam.setdefault("reverse", False)
                 cam.setdefault("line_orientation", "vertical")
                 cam.setdefault("orientation", "vertical")

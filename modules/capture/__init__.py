@@ -1,7 +1,6 @@
 """Unified capture sources."""
 
 from .base import Backoff, FrameSourceError, IFrameSource
-from .http_mjpeg import HttpMjpegSource
 from .pipeline_ffmpeg import FfmpegPipeline
 from .rtsp_ffmpeg import RtspFfmpegSource
 
@@ -10,6 +9,5 @@ __all__ = [
     "FrameSourceError",
     "Backoff",
     "RtspFfmpegSource",
-    "HttpMjpegSource",
     "FfmpegPipeline",
 ]

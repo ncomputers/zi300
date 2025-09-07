@@ -18,7 +18,7 @@
     <a href="/cameras/add" class="btn btn-primary mb-4">Add Camera</a>
     <div class="table-responsive">
         <table class="table table-bordered">
-        <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>URL</th><th>Status</th><th>PPE</th><th>VMS</th><th>In/Out Count</th><th>Line</th><th>Orientation</th><th>Transport</th><th>Res</th><th>Rev</th><th>Enabled</th><th>Show</th><th>Actions</th></tr></thead>
+        <thead><tr><th>ID</th><th>Name</th><th>URL</th><th>Status</th><th>PPE</th><th>VMS</th><th>In/Out Count</th><th>Line</th><th>Orientation</th><th>Transport</th><th>Res</th><th>Rev</th><th>Enabled</th><th>Show</th><th>Actions</th></tr></thead>
 
 
         <tbody id="camBody">
@@ -26,7 +26,6 @@
         <tr data-id="{{c.id}}">
             <td class="col-id">{{c.id}}</td>
             <td class="col-name">{{c.name}}</td>
-            <td class="col-type">{{c.type}}</td>
             <td class="col-url">{{c.url}}</td>
             <td class="col-status">
                 {% if c.online %}

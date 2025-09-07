@@ -14,9 +14,7 @@ test('camera form payload matches API schema', () => {
     reverse: false,
     show: false,
     enabled: false,
-    profile: null,
-    site_id: null,
-    type: 'rtsp'
+    site_id: null
   });
 
   const expected = [
@@ -30,9 +28,7 @@ test('camera form payload matches API schema', () => {
     'reverse',
     'show',
     'enabled',
-    'profile',
-    'site_id',
-    'type'
+    'site_id'
   ];
 
   const payload = buildPayload();

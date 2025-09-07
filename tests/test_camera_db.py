@@ -65,7 +65,7 @@ def test_camera_record_persist_and_defaults(monkeypatch):
 
     class DummyReq:
         async def json(self):
-            return {"name": "CamDB", "url": "rtsp://demo", "type": "rtsp"}
+            return {"name": "CamDB", "url": "rtsp://demo"}
 
     class DummyManager:
         async def start(self, cam_id):
