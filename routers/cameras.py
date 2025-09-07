@@ -80,7 +80,13 @@ def require_admin(request: Request):
     return require_roles(request, ["admin"])
 
 
+def require_viewer(request: Request):
+    """Ensure the current user has the ``viewer`` or ``admin`` role."""
+    return require_roles(request, ["viewer", "admin"])
+
+
 router = APIRouter(dependencies=[Depends(require_admin)])
+preview_router = APIRouter(dependencies=[Depends(require_viewer)])
 
 
 # Global lock protecting access to the shared ``cams`` list
@@ -1178,7 +1184,7 @@ async def api_camera_preview(token: str | None = None):
         preview_semaphore.release()
 
 
-@router.get(
+@preview_router.get(
     "/api/cameras/{camera_id}/mjpeg",
     summary="Stream MJPEG feed",
 )
@@ -1201,14 +1207,14 @@ async def camera_mjpeg(
     )
 
 
-@router.post("/api/cameras/{camera_id}/show")
+@preview_router.post("/api/cameras/{camera_id}/show")
 async def camera_show(camera_id: int):
     """Enable preview streaming for the camera."""
     preview_publisher.start_show(camera_id)
     return {"showing": preview_publisher.is_showing(camera_id)}
 
 
-@router.post("/api/cameras/{camera_id}/hide")
+@preview_router.post("/api/cameras/{camera_id}/hide")
 async def camera_hide(camera_id: int):
     """Disable preview streaming for the camera."""
     preview_publisher.stop_show(camera_id)
