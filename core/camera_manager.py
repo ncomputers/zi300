@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Callable, Dict, Iterable
 
 import numpy as np
@@ -182,6 +183,11 @@ class CameraManager:
     async def _update_latest(self, cam_id: int, frame: np.ndarray) -> None:
         async with self._latest_lock:
             self._latest_frames[cam_id] = {"ts": mtime(), "bgr": frame.copy()}
+            if self.redis:
+                try:
+                    self.redis.set(f"camera:{cam_id}:last_frame_ts", str(time.time()))
+                except Exception:
+                    pass
 
     def update_latest_frame(self, cam_id: int, frame: np.ndarray) -> None:
         """Schedule update of cached frame for ``cam_id``."""
