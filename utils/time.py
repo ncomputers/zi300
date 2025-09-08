@@ -2,12 +2,11 @@ from __future__ import annotations
 
 """Time-related helper functions."""
 
+import time
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import time
 
 from config import config as shared_config
-
 
 # expose stdlib time module for tests that monkeypatch utils.time.time
 time = time

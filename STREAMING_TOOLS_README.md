@@ -24,7 +24,7 @@ We've built comprehensive diagnostic and fix tools that test **every component**
 ./run_diagnostics.sh
 ```
 
-**Step 2: Auto-Fix**  
+**Step 2: Auto-Fix**
 ```bash
 python3 fix_streaming.py --interactive
 ```
@@ -44,7 +44,7 @@ Check your dashboard - streaming should now work! 🎉
 # Full system diagnosis
 ./run_diagnostics.sh
 
-# Test specific camera  
+# Test specific camera
 ./run_diagnostics.sh --camera-id 1
 
 # Verbose output for troubleshooting
@@ -82,14 +82,14 @@ python3 diagnose_streaming.py --camera-id 1 --verbose
 ## 🎯 Common Scenarios
 
 ### Scenario 1: "All camera tests pass but no dashboard video"
-**Root Cause**: Streaming not enabled  
-**Fix**: 
+**Root Cause**: Streaming not enabled
+**Fix**:
 ```bash
 python3 fix_streaming.py --all
 ```
 
 ### Scenario 2: "Some cameras work, others don't"
-**Root Cause**: Mixed configuration states  
+**Root Cause**: Mixed configuration states
 **Fix**:
 ```bash
 ./run_diagnostics.sh  # Identify which cameras
@@ -97,15 +97,15 @@ python3 fix_streaming.py --camera-id X  # Fix specific ones
 ```
 
 ### Scenario 3: "Everything worked, now nothing does"
-**Root Cause**: Corrupted Redis state  
+**Root Cause**: Corrupted Redis state
 **Fix**:
 ```bash
 python3 fix_streaming.py --clear-state
 python3 fix_streaming.py --all
 ```
 
-### Scenario 4: "Streaming works sometimes, fails other times"  
-**Root Cause**: Network/connectivity issues  
+### Scenario 4: "Streaming works sometimes, fails other times"
+**Root Cause**: Network/connectivity issues
 **Fix**:
 ```bash
 ./run_diagnostics.sh --verbose  # Get detailed connection info
@@ -123,7 +123,7 @@ Camera → FFmpeg → RtspConnector → FrameBus → PreviewPublisher → HTTP A
 
 ### System Level
 - ✅ API server health
-- ✅ Redis connectivity  
+- ✅ Redis connectivity
 - ✅ Camera configuration
 - ✅ JavaScript/frontend integration
 
@@ -133,7 +133,7 @@ Camera → FFmpeg → RtspConnector → FrameBus → PreviewPublisher → HTTP A
 - ✅ FFmpeg compatibility
 - ✅ Stream format validation
 
-### Pipeline Level  
+### Pipeline Level
 - ✅ RtspConnector state machine
 - ✅ FrameBus frame buffering
 - ✅ PreviewPublisher MJPEG generation
@@ -180,7 +180,7 @@ ffmpeg -rtsp_transport tcp -i "rtsp://camera/stream" -frames:v 1 test.jpg
 
 After running the tools, you should see:
 - **Dashboard shows live video feeds** ✅
-- **No "Stream unavailable" messages** ✅  
+- **No "Stream unavailable" messages** ✅
 - **Diagnostic reports 90%+ success rate** ✅
 - **MJPEG endpoints respond correctly** ✅
 
@@ -203,7 +203,7 @@ If these tools don't resolve your issue:
 
 2. **Provide system info**:
    - Camera make/model
-   - Network topology  
+   - Network topology
    - Error messages
    - Diagnostic report
 
@@ -214,7 +214,7 @@ If these tools don't resolve your issue:
 
 ## 🎯 The Bottom Line
 
-These tools solve the #1 most common issue with this crowd management system: **camera tests work but dashboard streaming doesn't**. 
+These tools solve the #1 most common issue with this crowd management system: **camera tests work but dashboard streaming doesn't**.
 
 By testing every component in the complex streaming pipeline and automatically applying fixes, you can resolve streaming issues in minutes instead of hours.
 

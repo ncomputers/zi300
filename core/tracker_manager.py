@@ -460,7 +460,9 @@ def watchdog_tick(trackers: Dict[int, PersonTracker]) -> None:
         timer = info.get("timer")
         if timer and timer.is_alive():
             continue
-        if not getattr(tr, "first_frame_ok", False) and time.time() < getattr(tr, "first_frame_grace", 0):
+        if not getattr(tr, "first_frame_ok", False) and time.time() < getattr(
+            tr, "first_frame_grace", 0
+        ):
             continue
         attempt = info.get("restart_attempts", 0) + 1
         consecutive = info.get("consecutive_failures", 0) + 1

@@ -7,7 +7,7 @@ This comprehensive toolkit helps you diagnose and fix camera streaming issues in
 | Tool | Purpose | Usage |
 |------|---------|-------|
 | `run_diagnostics.sh` | Full system diagnosis | `./run_diagnostics.sh` |
-| `diagnose_streaming.py` | Python diagnostic script | `python3 diagnose_streaming.py` |  
+| `diagnose_streaming.py` | Python diagnostic script | `python3 diagnose_streaming.py` |
 | `fix_streaming.py` | Automated fix application | `python3 fix_streaming.py --interactive` |
 | `DIAGNOSTIC_GUIDE.md` | This comprehensive guide | You're reading it! |
 
@@ -49,7 +49,7 @@ python3 diagnose_streaming.py --url "rtsp://camera/stream"
 - ✅ Redis connection
 - ✅ Application status
 
-### 2. **Camera Configuration** 
+### 2. **Camera Configuration**
 - ✅ Camera list from database
 - ✅ Camera enabled status
 - ✅ Show flag (critical for streaming)
@@ -68,7 +68,7 @@ python3 diagnose_streaming.py --url "rtsp://camera/stream"
 
 ### 5. **Streaming Pipeline Components**
 - ✅ **RtspConnector** - FFmpeg stream reader
-- ✅ **FrameBus** - Frame buffer system  
+- ✅ **FrameBus** - Frame buffer system
 - ✅ **PreviewPublisher** - MJPEG stream generator
 
 ### 6. **API Streaming Endpoints**
@@ -176,7 +176,7 @@ tail -f logs/app.log
 ```
 Look for:
 - `STREAM_ERROR`
-- `capture_error` 
+- `capture_error`
 - `STREAM_RETRY`
 - Connection failures
 
@@ -194,7 +194,7 @@ vlc rtsp://admin:pass@192.168.1.100/stream
 # Stop camera
 curl -X POST http://localhost:8000/api/cameras/1/hide
 
-# Restart camera stream  
+# Restart camera stream
 curl -X POST http://localhost:8000/api/cameras/1/reload
 
 # Enable streaming
@@ -252,7 +252,7 @@ Test this command manually to isolate issues.
 
 ### Success Rate
 - **100%**: Perfect setup ✅
-- **80-99%**: Minor issues, mostly functional ⚠️  
+- **80-99%**: Minor issues, mostly functional ⚠️
 - **50-79%**: Significant problems, needs attention ❌
 - **<50%**: Major configuration issues 🚨
 
@@ -260,7 +260,7 @@ Test this command manually to isolate issues.
 
 #### **Pattern 1**: Test Works, API Fails
 ```
-✅ Camera Test Endpoint  
+✅ Camera Test Endpoint
 ❌ API Streaming Endpoints
 ```
 **Cause**: Streaming not enabled
@@ -297,7 +297,7 @@ If the diagnostic doesn't solve your issue:
    ```
 
 3. **Check specific components**:
-   - Application logs: `tail -f logs/app.log`  
+   - Application logs: `tail -f logs/app.log`
    - System logs: `journalctl -f -u your-service`
    - Network: `netstat -tulpn | grep 8000`
 

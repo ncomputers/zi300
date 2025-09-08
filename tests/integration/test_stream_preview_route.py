@@ -3,9 +3,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from starlette.routing import Mount
 
-from routers import blueprints, dashboard
 from modules.frame_bus import FrameBus
 from modules.preview.mjpeg_publisher import PreviewPublisher
+from routers import blueprints, dashboard
 
 
 class DummyTracker:

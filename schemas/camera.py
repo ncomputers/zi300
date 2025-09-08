@@ -34,8 +34,6 @@ class Resolution(str, Enum):
     r1080p = "1080p"
 
 
-
-
 class Point(BaseModel):
     """A point on a 2D plane."""
 
