@@ -1,3 +1,4 @@
+import asyncio
 import json
 import queue
 import subprocess
@@ -28,7 +29,7 @@ def redis_client(redis_server):
 def test_trim_sorted_set_removes_old_entries(redis_client):
     now = int(time.time())
     redis_client.zadd("logs", {"old": now - 100, "new": now})
-    trim_sorted_set(RedisFacade(redis_client), "logs", now, retention_secs=50)
+    asyncio.run(trim_sorted_set(RedisFacade(redis_client), "logs", now, retention_secs=50))
     assert redis_client.zrange("logs", 0, -1) == ["new"]
 
 
