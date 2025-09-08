@@ -22,8 +22,6 @@ class StreamUnavailable(Exception):
     """Raised when no capture backend can provide frames."""
 
 
-
-
 @dataclass
 class CaptureConfig:
     uri: str | int | None

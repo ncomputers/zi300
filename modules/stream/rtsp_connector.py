@@ -162,9 +162,7 @@ class RtspConnector:
             bufsize=0,
         )
 
-    def _read_frame(
-        self, proc: subprocess.Popen[bytes], timeout: float
-    ) -> np.ndarray | None:
+    def _read_frame(self, proc: subprocess.Popen[bytes], timeout: float) -> np.ndarray | None:
         """Read a single frame from the FFmpeg process.
 
         Returns ``None`` if the frame was incomplete so callers can skip it

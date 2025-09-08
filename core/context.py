@@ -7,7 +7,6 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 from redis import Redis
 
-
 # Default resources for tests or lightweight usage where the FastAPI app state
 # is not fully populated.  Individual routers can populate these values by
 # calling :func:`set_app_state_defaults`.
@@ -76,7 +75,9 @@ def get_app_context(request: Request) -> AppContext:
             redis=getattr(app.state, "redis_client", _default_redis),
             trackers=getattr(app.state, "trackers", _default_trackers),
             templates=getattr(app.state, "templates", _default_templates),
-            branding=getattr(app.state, "config", _default_config).get("branding", _default_branding),
+            branding=getattr(app.state, "config", _default_config).get(
+                "branding", _default_branding
+            ),
             cameras=getattr(app.state, "cameras", _default_cameras),
             redisfx=getattr(app.state, "redis_facade", _default_redisfx),
         )

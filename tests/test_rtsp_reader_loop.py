@@ -25,6 +25,7 @@ class FakeStdout:
     def close(self):
         pass
 
+
 class FakeProc:
     def __init__(self, chunks):
         self.stdout = FakeStdout(chunks)
@@ -75,7 +76,9 @@ def test_partial_read_accumulates():
     assert frame is not None
     assert src.frames_total == 1
     assert src.partial_reads == 0
-    np.testing.assert_array_equal(frame, np.array([[[97, 98, 99], [100, 101, 102]]], dtype=np.uint8))
+    np.testing.assert_array_equal(
+        frame, np.array([[[97, 98, 99], [100, 101, 102]]], dtype=np.uint8)
+    )
 
 
 def test_eof_counts_partial_and_restart(monkeypatch):
