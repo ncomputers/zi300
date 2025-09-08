@@ -473,21 +473,13 @@ async def reset_endpoint(ctx: SettingsContext = Depends(get_settings_context)):
 
 
 @router.get("/license")
-async def license_page(
-    request: Request,
-    ctx: SettingsContext = Depends(get_settings_context),
-    user: dict = Depends(require_admin),
-):
+async def license_page(request: Request, ctx: SettingsContext = Depends(get_settings_context)):
     """Render a page for entering a license key."""
     return ctx.templates.TemplateResponse("license.html", {"request": request, "cfg": ctx.cfg})
 
 
 @router.post("/license")
-async def activate_license(
-    request: Request,
-    ctx: SettingsContext = Depends(get_settings_context),
-    user: dict = Depends(require_admin),
-):
+async def activate_license(request: Request, ctx: SettingsContext = Depends(get_settings_context)):
     data = await request.json()
     key = data.get("key")
     from config.license_storage import set as save_license
