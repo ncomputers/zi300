@@ -28,8 +28,9 @@ from schemas.alerts import EmailConfig
 
 # ruff: noqa: B008
 
-
 router = APIRouter(dependencies=[Depends(require_admin)])
+# Public routes that must not require authentication (e.g., license activation)
+public_router = APIRouter()
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGO_DIR = BASE_DIR / "static" / "logos"
 URL_RE = re.compile(r"^https?://")
@@ -472,13 +473,13 @@ async def reset_endpoint(ctx: SettingsContext = Depends(get_settings_context)):
     return {"reset": True}
 
 
-@router.get("/license")
+@public_router.get("/license")
 async def license_page(request: Request, ctx: SettingsContext = Depends(get_settings_context)):
     """Render a page for entering a license key."""
     return ctx.templates.TemplateResponse("license.html", {"request": request, "cfg": ctx.cfg})
 
 
-@router.post("/license")
+@public_router.post("/license")
 async def activate_license(request: Request, ctx: SettingsContext = Depends(get_settings_context)):
     data = await request.json()
     key = data.get("key")
