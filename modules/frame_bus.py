@@ -73,12 +73,21 @@ class FrameBus:
             remaining = deadline - loop.time()
             if remaining <= 0:
                 return None
-            try:
-                async with asyncio.timeout(remaining):
-                    async with self._cond:
-                        await self._cond.wait()
-            except TimeoutError:
-                return None
+            if hasattr(asyncio, "timeout"):
+                # Python 3.11+
+                try:
+                    async with asyncio.timeout(remaining):
+                        async with self._cond:
+                            await self._cond.wait()
+                except TimeoutError:
+                    return None
+            else:
+                # Python 3.10 fallback
+                async with self._cond:
+                    try:
+                        await asyncio.wait_for(self._cond.wait(), timeout=remaining)
+                    except asyncio.TimeoutError:
+                        return None
 
     # ------------------------------------------------------------------
     def get_latest(self, timeout_ms: int) -> Optional[np.ndarray]:
