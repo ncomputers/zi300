@@ -79,7 +79,7 @@ def register_blueprints(app: FastAPI) -> None:
     """Attach all routers to the given FastAPI app."""
     for mod in MODULES:
         app.include_router(mod.router)
-        if mod is cam_routes and hasattr(mod, "preview_router"):
+        if hasattr(mod, "preview_router"):
             app.include_router(mod.preview_router)
         # Include any module-defined unauthenticated/public router (e.g., license page)
         if hasattr(mod, "public_router"):

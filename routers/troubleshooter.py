@@ -18,6 +18,7 @@ from starlette.responses import StreamingResponse
 from diagnostics.registry import list_tests
 from modules import troubleshooter_runner as ts_runner
 from modules.stream_probe import check_rtsp
+from routers import cameras as cam_routes
 from utils.deps import get_cameras, get_templates
 
 router = APIRouter()
@@ -55,6 +56,13 @@ def _get_camera_mode(cam: Dict[str, Any]) -> str:
 
 
 async def get_last_frame_age_sec(cam_id: int) -> float | None:
+    bus = cam_routes._frame_buses.get(cam_id)
+    if bus is not None:
+        with bus._lock:
+            ts = bus._last_ts
+        if ts is not None:
+            return time.time() - ts
+        return None
     if redisfx is None:
         return None
     try:

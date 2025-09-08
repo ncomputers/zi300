@@ -41,7 +41,7 @@ class PreviewPublisher:
             return
         self._clients[camera_id] += 1
         logx.event("PREVIEW_CLIENT_OPEN", camera_id=camera_id)
-        boundary = b"--frame\r\nContent-Type: image/jpeg\r\n\r\n"
+        boundary = b"--frame"
         try:
             while self.is_showing(camera_id):
                 frame = await bus.get_latest_async(1000)
@@ -54,7 +54,11 @@ class PreviewPublisher:
                     seq=bus.seq,
                 )
                 jpeg = encode_jpeg(frame)
-                yield boundary + jpeg + b"\r\n"
+                headers = (
+                    b"Content-Type: image/jpeg\r\n"
+                    + f"Content-Length: {len(jpeg)}\r\n\r\n".encode()
+                )
+                yield boundary + b"\r\n" + headers + jpeg + b"\r\n"
         finally:
             self._clients[camera_id] -= 1
             logx.event("PREVIEW_CLIENT_CLOSE", camera_id=camera_id)
