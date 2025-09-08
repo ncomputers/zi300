@@ -97,13 +97,7 @@ def test_misc_endpoints(tmp_path):
     assert asyncio.run(settings.reset_endpoint(ctx)) == {"reset": True}
 
     lic = generate_license("default_secret", 1, 1, {}, client="T")
-    resp = asyncio.run(
-        settings.activate_license(
-            DummyRequest(json_data={"key": lic}),
-            ctx,
-            {"role": "admin"},
-        )
-    )
+    resp = asyncio.run(settings.activate_license(DummyRequest(json_data={"key": lic}), ctx))
     assert resp["activated"]
     assert ctx.cfg["license_key"] == lic
 
